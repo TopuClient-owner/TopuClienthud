@@ -59,7 +59,6 @@ public final class HudManager {
             System.nanoTime();
 
     private enum HudId {
-
         ARMOR,
         FPS,
         PING,
@@ -119,11 +118,7 @@ public final class HudManager {
         );
 
         /*
-         * Minecraft 1.21.8 / Fabric API HUD callback:
-         *
-         * (DrawContext, RenderTickCounter)
-         *
-         * 1.21.8 RenderTickCounter exposes getTickProgress(boolean).
+         * Minecraft 1.21.8 / Fabric API HUD callback.
          */
         HudRenderCallback.EVENT.register(
                 (drawContext, tickCounter) ->
@@ -139,13 +134,12 @@ public final class HudManager {
     // PUBLIC METHODS
     // ============================================================
 
-    public static void setMenuOpen(boolean value) {
-        /*
-         * Kept for compatibility with the menu implementation.
-         */
+    public static void setMenuOpen(
+            boolean value) {
     }
 
-    public static void setEditMode(boolean value) {
+    public static void setEditMode(
+            boolean value) {
 
         editMode = value;
 
@@ -153,9 +147,7 @@ public final class HudManager {
                 value;
 
         if (!value) {
-
             draggingHud = null;
-
             ConfigManager.save();
         }
     }
@@ -183,7 +175,7 @@ public final class HudManager {
             MinecraftClient client) {
 
         // --------------------------------------------------------
-        // OPEN MENU - RIGHT SHIFT
+        // RIGHT SHIFT - MENU
         // --------------------------------------------------------
 
         if (menuKey != null) {
@@ -200,7 +192,7 @@ public final class HudManager {
         }
 
         // --------------------------------------------------------
-        // HUD EDIT MODE - RIGHT CTRL
+        // RIGHT CTRL - EDIT MODE
         // --------------------------------------------------------
 
         if (editKey != null) {
@@ -214,7 +206,7 @@ public final class HudManager {
         }
 
         // --------------------------------------------------------
-        // TOGGLE SNEAK - RIGHT ALT
+        // RIGHT ALT - TOGGLE SNEAK
         // --------------------------------------------------------
 
         if (sneakKey != null) {
@@ -225,10 +217,6 @@ public final class HudManager {
                         !sneakToggled;
             }
         }
-
-        // --------------------------------------------------------
-        // PLAYER
-        // --------------------------------------------------------
 
         if (client.player == null)
             return;
@@ -264,7 +252,7 @@ public final class HudManager {
         }
 
         // --------------------------------------------------------
-        // CLIENT TPS ESTIMATE
+        // TPS ESTIMATE
         // --------------------------------------------------------
 
         long now =
@@ -280,7 +268,7 @@ public final class HudManager {
 
             double currentRate =
                     1_000_000_000.0 /
-                    tickNanos;
+                            tickNanos;
 
             currentRate =
                     Math.min(
@@ -290,7 +278,7 @@ public final class HudManager {
 
             tpsEstimate =
                     tpsEstimate * 0.94 +
-                    currentRate * 0.06;
+                            currentRate * 0.06;
 
             tpsEstimate =
                     MathHelper.clamp(
@@ -306,7 +294,7 @@ public final class HudManager {
 
         long cutoff =
                 System.currentTimeMillis() -
-                1000L;
+                        1000L;
 
         while (!clickTimes.isEmpty() &&
                 clickTimes.peekFirst() < cutoff) {
@@ -326,7 +314,7 @@ public final class HudManager {
         }
 
         // --------------------------------------------------------
-        // HUD EDITING
+        // HUD EDIT MODE
         // --------------------------------------------------------
 
         if (editMode &&
@@ -341,23 +329,18 @@ public final class HudManager {
             if (mouseDown &&
                     !leftMouseWasDown) {
 
-                beginDrag(
-                        client
-                );
+                beginDrag(client);
             }
 
             if (mouseDown) {
 
-                updateDrag(
-                        client
-                );
+                updateDrag(client);
             }
 
             if (!mouseDown &&
                     leftMouseWasDown) {
 
-                draggingHud =
-                        null;
+                draggingHud = null;
 
                 ConfigManager.save();
             }
@@ -384,11 +367,13 @@ public final class HudManager {
 
         double scale =
                 client.getWindow().getScaledWidth()
-                        / (double)
+                        /
+                        (double)
                         client.getWindow().getWidth();
 
         return (int) Math.round(
-                client.mouse.getX() * scale
+                client.mouse.getX() *
+                        scale
         );
     }
 
@@ -397,16 +382,18 @@ public final class HudManager {
 
         double scale =
                 client.getWindow().getScaledHeight()
-                        / (double)
+                        /
+                        (double)
                         client.getWindow().getHeight();
 
         return (int) Math.round(
-                client.mouse.getY() * scale
+                client.mouse.getY() *
+                        scale
         );
     }
 
     // ============================================================
-    // POSITION GETTER
+    // GET POSITION
     // ============================================================
 
     private static int[] getPosition(
@@ -496,7 +483,7 @@ public final class HudManager {
     }
 
     // ============================================================
-    // POSITION SETTER
+    // SET POSITION
     // ============================================================
 
     private static void setPosition(
@@ -575,7 +562,7 @@ public final class HudManager {
     }
 
     // ============================================================
-    // ENABLED CHECK
+    // ENABLED
     // ============================================================
 
     private static boolean isEnabled(
@@ -628,7 +615,7 @@ public final class HudManager {
     }
 
     // ============================================================
-    // HUD DIMENSIONS
+    // HUD SIZE
     // ============================================================
 
     private static int getWidth(
@@ -688,10 +675,6 @@ public final class HudManager {
         TopuHudConfig config =
                 ConfigManager.get();
 
-        /*
-         * Reverse order means newer modules can be selected
-         * first when HUDs overlap.
-         */
         HudId[] ids =
                 HudId.values();
 
@@ -711,27 +694,25 @@ public final class HudManager {
                             id
                     );
 
-            int width =
-                    getWidth(id);
-
-            int height =
-                    getHeight(id);
-
             if (mouseX >= position[0] &&
-                    mouseX <= position[0] + width &&
+                    mouseX <=
+                            position[0] +
+                                    getWidth(id) &&
                     mouseY >= position[1] &&
-                    mouseY <= position[1] + height) {
+                    mouseY <=
+                            position[1] +
+                                    getHeight(id)) {
 
                 draggingHud =
                         id;
 
                 dragOffsetX =
                         mouseX -
-                        position[0];
+                                position[0];
 
                 dragOffsetY =
                         mouseY -
-                        position[1];
+                                position[1];
 
                 return;
             }
@@ -771,7 +752,7 @@ public final class HudManager {
     }
 
     // ============================================================
-    // HUD RENDER
+    // RENDER
     // ============================================================
 
     private static void render(
@@ -788,10 +769,6 @@ public final class HudManager {
         TopuHudConfig config =
                 ConfigManager.get();
 
-        // --------------------------------------------------------
-        // ARMOR HUD
-        // --------------------------------------------------------
-
         if (config.armorHud) {
 
             renderArmor(
@@ -801,10 +778,6 @@ public final class HudManager {
                     config.armorY
             );
         }
-
-        // --------------------------------------------------------
-        // FPS
-        // --------------------------------------------------------
 
         if (config.fpsCounter) {
 
@@ -817,10 +790,6 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // PING
-        // --------------------------------------------------------
-
         if (config.pingDisplay) {
 
             renderPing(
@@ -830,10 +799,6 @@ public final class HudManager {
                     config.pingY
             );
         }
-
-        // --------------------------------------------------------
-        // TPS
-        // --------------------------------------------------------
 
         if (config.tpsDisplay) {
 
@@ -848,10 +813,6 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // CPS
-        // --------------------------------------------------------
-
         if (config.cpsDisplay) {
 
             drawText(
@@ -863,10 +824,6 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // COMBO
-        // --------------------------------------------------------
-
         if (config.comboCounter) {
 
             drawText(
@@ -877,10 +834,6 @@ public final class HudManager {
                     config.comboY
             );
         }
-
-        // --------------------------------------------------------
-        // TOTEMS
-        // --------------------------------------------------------
 
         if (config.totemCounter) {
 
@@ -894,10 +847,6 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // POTION EFFECTS
-        // --------------------------------------------------------
-
         if (config.potionEffects) {
 
             renderEffects(
@@ -907,10 +856,6 @@ public final class HudManager {
                     config.effectsY
             );
         }
-
-        // --------------------------------------------------------
-        // POTION COUNTER
-        // --------------------------------------------------------
 
         if (config.potionCounter) {
 
@@ -922,10 +867,6 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // GAPPLE COUNTER
-        // --------------------------------------------------------
-
         if (config.gappleCounter) {
 
             renderGappleCount(
@@ -935,10 +876,6 @@ public final class HudManager {
                     config.gappleY
             );
         }
-
-        // --------------------------------------------------------
-        // ARMOR WARNING
-        // --------------------------------------------------------
 
         if (config.armorWarning) {
 
@@ -950,10 +887,6 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // ENEMY HEALTH
-        // --------------------------------------------------------
-
         if (config.enemyHealth) {
 
             renderEnemyHealth(
@@ -963,10 +896,6 @@ public final class HudManager {
                     config.enemyHealthY
             );
         }
-
-        // --------------------------------------------------------
-        // ATTACK COOLDOWN
-        // --------------------------------------------------------
 
         if (config.cooldown) {
 
@@ -987,10 +916,6 @@ public final class HudManager {
             int screenWidth =
                     client.getWindow()
                             .getScaledWidth();
-
-            int screenHeight =
-                    client.getWindow()
-                            .getScaledHeight();
 
             drawContext.fill(
                     0,
@@ -1023,17 +948,14 @@ public final class HudManager {
                                 id
                         );
 
-                int borderColor =
-                        draggingHud == id
-                                ? 0xFF00FF88
-                                : 0x66777777;
-
                 drawContext.drawBorder(
                         position[0] - 2,
                         position[1] - 2,
                         getWidth(id) + 4,
                         getHeight(id) + 4,
-                        borderColor
+                        draggingHud == id
+                                ? 0xFF00FF88
+                                : 0x66777777
                 );
             }
         }
@@ -1049,12 +971,29 @@ public final class HudManager {
             int x,
             int y) {
 
+        /*
+         * 1.21.8:
+         * PlayerInventory exposes inventory stacks through the
+         * indexed stack accessors rather than the old getArmorStack()
+         * and offHand fields used in older mappings.
+         *
+         * Armor inventory indices:
+         * 39 = helmet
+         * 38 = chestplate
+         * 37 = leggings
+         * 36 = boots
+         */
         for (int i = 0; i < 4; i++) {
+
+            int inventoryIndex =
+                    39 - i;
 
             ItemStack stack =
                     client.player
                             .getInventory()
-                            .getArmorStack(i);
+                            .getStack(
+                                    inventoryIndex
+                            );
 
             if (stack.isEmpty())
                 continue;
@@ -1189,15 +1128,20 @@ public final class HudManager {
             }
         }
 
-        for (ItemStack stack :
+        /*
+         * In 1.21.8, offhand can be read using the inventory's
+         * offhand accessor.
+         */
+        ItemStack offhand =
                 player.getInventory()
-                        .offHand) {
+                        .getStack(
+                                40
+                        );
 
-            if (stack.isOf(item)) {
+        if (offhand.isOf(item)) {
 
-                count +=
-                        stack.getCount();
-            }
+            count +=
+                    offhand.getCount();
         }
 
         drawText(
@@ -1239,20 +1183,21 @@ public final class HudManager {
             }
         }
 
-        for (ItemStack stack :
+        ItemStack offhand =
                 player.getInventory()
-                        .offHand) {
+                        .getStack(
+                                40
+                        );
 
-            if (stack.isOf(
-                            Items.POTION) ||
-                    stack.isOf(
-                            Items.SPLASH_POTION) ||
-                    stack.isOf(
-                            Items.LINGERING_POTION)) {
+        if (offhand.isOf(
+                        Items.POTION) ||
+                offhand.isOf(
+                        Items.SPLASH_POTION) ||
+                offhand.isOf(
+                        Items.LINGERING_POTION)) {
 
-                count +=
-                        stack.getCount();
-            }
+            count +=
+                    offhand.getCount();
         }
 
         drawText(
@@ -1291,18 +1236,19 @@ public final class HudManager {
             }
         }
 
-        for (ItemStack stack :
+        ItemStack offhand =
                 player.getInventory()
-                        .offHand) {
+                        .getStack(
+                                40
+                        );
 
-            if (stack.isOf(
-                            Items.GOLDEN_APPLE) ||
-                    stack.isOf(
-                            Items.ENCHANTED_GOLDEN_APPLE)) {
+        if (offhand.isOf(
+                        Items.GOLDEN_APPLE) ||
+                offhand.isOf(
+                        Items.ENCHANTED_GOLDEN_APPLE)) {
 
-                count +=
-                        stack.getCount();
-            }
+            count +=
+                    offhand.getCount();
         }
 
         drawText(
@@ -1378,10 +1324,15 @@ public final class HudManager {
 
         for (int i = 0; i < 4; i++) {
 
+            int inventoryIndex =
+                    39 - i;
+
             ItemStack stack =
                     client.player
                             .getInventory()
-                            .getArmorStack(i);
+                            .getStack(
+                                    inventoryIndex
+                            );
 
             if (!stack.isDamageable())
                 continue;
