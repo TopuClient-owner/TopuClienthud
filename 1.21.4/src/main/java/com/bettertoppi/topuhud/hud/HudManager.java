@@ -1,3 +1,4 @@
+
 package com.bettertoppi.topuhud.hud;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
@@ -40,6 +41,9 @@ public final class HudManager {
     private static boolean sneakToggled;
     private static boolean editMode;
     private static boolean leftMouseWasDown;
+
+    private static boolean rightCtrlWasDown;
+    private static boolean cursorReleasedByRightCtrl;
 
     private static HudId draggingHud;
     private static int dragOffsetX;
@@ -110,10 +114,6 @@ public final class HudManager {
                 HudManager::tick
         );
 
-        /*
-         * Fabric API 1.21.4 HudRenderCallback:
-         * onHudRender(DrawContext, RenderTickCounter)
-         */
         HudRenderCallback.EVENT.register(
                 (drawContext, tickCounter) ->
                         HudManager.render(
@@ -141,6 +141,7 @@ public final class HudManager {
     }
 
     public static void registerClick() {
+
         clickTimes.addLast(
                 System.currentTimeMillis()
         );
@@ -150,7 +151,9 @@ public final class HudManager {
 
         registerClick();
 
-        lastHitTime = System.currentTimeMillis();
+        lastHitTime =
+                System.currentTimeMillis();
+
         combo++;
     }
 
@@ -159,6 +162,10 @@ public final class HudManager {
     // ============================================================
 
     private static void tick(MinecraftClient client) {
+
+        // ========================================================
+        // RIGHT SHIFT - OPEN MENU
+        // ========================================================
 
         if (menuKey != null) {
 
@@ -173,15 +180,73 @@ public final class HudManager {
             }
         }
 
-        if (editKey != null) {
+        // ========================================================
+        // RIGHT CTRL - EDIT MODE + CURSOR
+        // ========================================================
 
-            while (editKey.wasPressed()) {
+        boolean rightCtrlDown =
+                GLFW.glfwGetKey(
+                        client.getWindow().getHandle(),
+                        GLFW.GLFW_KEY_RIGHT_CONTROL
+                ) == GLFW.GLFW_PRESS;
 
-                setEditMode(
-                        !editMode
-                );
+        // Right Ctrl was pressed
+        if (rightCtrlDown &&
+                !rightCtrlWasDown) {
+
+            /*
+             * Toggle HUD edit mode.
+             */
+            setEditMode(
+                    !editMode
+            );
+
+            /*
+             * Release Minecraft's mouse cursor.
+             */
+            if (client.currentScreen == null) {
+
+                client.mouse.unlockCursor();
+
+                cursorReleasedByRightCtrl = true;
             }
         }
+
+        /*
+         * Keep the cursor unlocked while Right Ctrl
+         * is being held.
+         */
+        if (rightCtrlDown &&
+                cursorReleasedByRightCtrl &&
+                client.currentScreen == null) {
+
+            if (client.mouse.isCursorLocked()) {
+
+                client.mouse.unlockCursor();
+            }
+        }
+
+        /*
+         * Right Ctrl released.
+         */
+        if (!rightCtrlDown &&
+                rightCtrlWasDown) {
+
+            if (cursorReleasedByRightCtrl &&
+                    client.currentScreen == null) {
+
+                client.mouse.lockCursor();
+            }
+
+            cursorReleasedByRightCtrl = false;
+        }
+
+        rightCtrlWasDown =
+                rightCtrlDown;
+
+        // ========================================================
+        // RIGHT ALT - TOGGLE SNEAK
+        // ========================================================
 
         if (sneakKey != null) {
 
@@ -220,14 +285,17 @@ public final class HudManager {
                 client.player.getHungerManager()
                         .getFoodLevel() > 6) {
 
-            client.player.setSprinting(true);
+            client.player.setSprinting(
+                    true
+            );
         }
 
         // ========================================================
         // TPS ESTIMATE
         // ========================================================
 
-        long now = System.nanoTime();
+        long now =
+                System.nanoTime();
 
         long delta =
                 now - lastTickNanos;
@@ -238,10 +306,14 @@ public final class HudManager {
         if (delta > 0) {
 
             double tickRate =
-                    1_000_000_000.0 / delta;
+                    1_000_000_000.0 /
+                    delta;
 
             tickRate =
-                    Math.min(20.0, tickRate);
+                    Math.min(
+                            20.0,
+                            tickRate
+                    );
 
             tpsEstimate =
                     tpsEstimate * 0.94 +
@@ -284,7 +356,8 @@ public final class HudManager {
         // ========================================================
 
         if (editMode &&
-                client.currentScreen == null) {
+                client.currentScreen == null &&
+                !cursorReleasedByRightCtrl) {
 
             boolean mouseDown =
                     GLFW.glfwGetMouseButton(
@@ -299,6 +372,7 @@ public final class HudManager {
             }
 
             if (mouseDown) {
+
                 updateDrag(client);
             }
 
@@ -306,10 +380,12 @@ public final class HudManager {
                     leftMouseWasDown) {
 
                 draggingHud = null;
+
                 ConfigManager.save();
             }
 
-            leftMouseWasDown = mouseDown;
+            leftMouseWasDown =
+                    mouseDown;
 
         } else {
 
@@ -515,7 +591,8 @@ public final class HudManager {
     // ENABLED
     // ============================================================
 
-    private static boolean isEnabled(HudId id) {
+    private static boolean isEnabled(
+            HudId id) {
 
         TopuHudConfig config =
                 ConfigManager.get();
@@ -567,7 +644,8 @@ public final class HudManager {
     // HUD SIZE
     // ============================================================
 
-    private static int getWidth(HudId id) {
+    private static int getWidth(
+            HudId id) {
 
         return switch (id) {
 
@@ -591,7 +669,8 @@ public final class HudManager {
         };
     }
 
-    private static int getHeight(HudId id) {
+    private static int getHeight(
+            HudId id) {
 
         return switch (id) {
 
@@ -973,7 +1052,8 @@ public final class HudManager {
                             );
 
             if (entry != null) {
-                ping = entry.getLatency();
+                ping =
+                        entry.getLatency();
             }
         }
 
@@ -1064,10 +1144,8 @@ public final class HudManager {
         for (ItemStack stack :
                 player.getInventory().main) {
 
-            if (stack.isOf(
-                            Items.GOLDEN_APPLE) ||
-                    stack.isOf(
-                            Items.ENCHANTED_GOLDEN_APPLE)) {
+            if (stack.isOf(Items.GOLDEN_APPLE) ||
+                    stack.isOf(Items.ENCHANTED_GOLDEN_APPLE)) {
 
                 count += stack.getCount();
             }
@@ -1076,10 +1154,8 @@ public final class HudManager {
         for (ItemStack stack :
                 player.getInventory().offHand) {
 
-            if (stack.isOf(
-                            Items.GOLDEN_APPLE) ||
-                    stack.isOf(
-                            Items.ENCHANTED_GOLDEN_APPLE)) {
+            if (stack.isOf(Items.GOLDEN_APPLE) ||
+                    stack.isOf(Items.ENCHANTED_GOLDEN_APPLE)) {
 
                 count += stack.getCount();
             }
