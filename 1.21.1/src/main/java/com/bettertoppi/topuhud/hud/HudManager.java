@@ -69,7 +69,7 @@ public final class HudManager {
      *
      * PUBLIC so TopuScreenEditor can access them.
      */
-    public enum HudId {
+    public enum Id {
         ARMOR,
         FPS,
         PING,
