@@ -1,4 +1,5 @@
-name: Build TopuHUD 1.21.11
+```yaml
+name: Build TopuHUD
 
 on:
   push:
@@ -8,7 +9,17 @@ on:
 
 jobs:
   build:
+    name: Build TopuHUD ${{ matrix.version }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - "1.21.1"
+          - "1.21.4"
+          - "1.21.8"
+          - "1.21.11"
 
     steps:
       - name: Checkout repository
@@ -18,13 +29,13 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: gradle
 
-      - name: Set up Gradle 9.2.0
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.2.0'
+          gradle-version: "9.2.0"
 
       - name: Show Java and Gradle versions
         run: |
@@ -32,12 +43,13 @@ jobs:
           gradle --version
 
       - name: Clean build
-        working-directory: 1.21.11
+        working-directory: ${{ matrix.version }}
         run: gradle clean build --no-daemon
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: TopuHUD-1.21.11
-          path: 1.21.11/build/libs/*.jar
+          name: TopuHUD-${{ matrix.version }}
+          path: ${{ matrix.version }}/build/libs/*.jar
           if-no-files-found: error
+```
