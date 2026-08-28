@@ -3,55 +3,466 @@ package com.bettertoppi.topuhud.modmenu;
 import com.bettertoppi.topuhud.config.ConfigManager;
 import com.bettertoppi.topuhud.config.TopuHudConfig;
 import com.bettertoppi.topuhud.hud.HudManager;
+
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
-public final class TopuHudScreen extends Screen {
+public final class TopuScreenEditor extends Screen {
+
     private final Screen parent;
-    private static final String[][] MODULES={
-        {"Armor HUD","armor"},{"FPS Counter","fps"},{"Ping Display","ping"},{"Server TPS","tps"},
-        {"CPS Display","cps"},{"Combo Counter","combo"},{"Totem Counter","totem"},{"Potion Effects","effects"},
-        {"Potion Counter","potion"},{"Gapple Counter","gapple"},{"Auto Sprint","sprint"},{"Toggle Sneak","sneak"},
-        {"Armor Warning","warning"},{"Enemy Health","enemy"},{"Attack Cooldown","cooldown"}
-    };
 
-    public TopuHudScreen(Screen parent){super(Text.literal("Topu HUD"));this.parent=parent;}
+    private final TopuHudConfig config;
 
-    @Override protected void init(){
-        int x=width/2-220,y=54;
-        for(String[] m:MODULES){
-            String name=m[0],id=m[1];
-            addDrawableChild(ButtonWidget.builder(Text.literal(label(name,id)),b->{toggle(id);b.setMessage(Text.literal(label(name,id)));})
-                    .dimensions(x,y,205,21).build());
-            y+=24;
-            if(y>height-70){y=54;x+=214;}
+    private HudManager.Id dragging;
+
+    private int dragOffsetX;
+    private int dragOffsetY;
+
+    private boolean draggingMouse;
+
+    public TopuScreenEditor(Screen parent) {
+        super(Text.literal("Topu HUD Editor"));
+
+        this.parent = parent;
+        this.config = ConfigManager.get();
+    }
+
+    @Override
+    protected void init() {
+
+        int centerX = this.width / 2;
+
+        this.addDrawableChild(
+                ButtonWidget.builder(
+                        Text.literal("Done"),
+                        button -> closeEditor()
+                ).dimensions(
+                        centerX - 50,
+                        this.height - 30,
+                        100,
+                        20
+                ).build()
+        );
+    }
+
+    private void closeEditor() {
+
+        dragging = null;
+        draggingMouse = false;
+
+        ConfigManager.save();
+
+        MinecraftClient.getInstance()
+                .setScreen(parent);
+    }
+
+    @Override
+    public void close() {
+        closeEditor();
+    }
+
+    // ============================================================
+    // MOUSE
+    // ============================================================
+
+    @Override
+    public boolean mouseClicked(
+            double mouseX,
+            double mouseY,
+            int button
+    ) {
+
+        if (button != 0) {
+            return super.mouseClicked(
+                    mouseX,
+                    mouseY,
+                    button
+            );
         }
-        addDrawableChild(ButtonWidget.builder(Text.literal("Edit HUD [Right Ctrl]"),b->HudManager.setEditMode(true))
-                .dimensions(width/2-105,height-42,210,22).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Close"),b->close())
-                .dimensions(width-82,10,68,20).build());
+
+        HudManager.Id[] ids =
+                HudManager.Id.values();
+
+        /*
+         * Iterate backwards so the last HUD element
+         * is treated as being on top.
+         */
+        for (int i = ids.length - 1; i >= 0; i--) {
+
+            HudManager.Id id = ids[i];
+
+            if (!HudManager.isEnabledForEditor(id)) {
+                continue;
+            }
+
+            int[] position =
+                    HudManager.getPositionForEditor(
+                            config,
+                            id
+                    );
+
+            int width =
+                    HudManager.getWidthForEditor(id);
+
+            int height =
+                    HudManager.getHeightForEditor(id);
+
+            if (mouseX >= position[0]
+                    && mouseX <= position[0] + width
+                    && mouseY >= position[1]
+                    && mouseY <= position[1] + height) {
+
+                dragging = id;
+
+                dragOffsetX =
+                        (int) mouseX - position[0];
+
+                dragOffsetY =
+                        (int) mouseY - position[1];
+
+                draggingMouse = true;
+
+                /*
+                 * Returning true prevents Minecraft's
+                 * normal screen handling from processing
+                 * this click.
+                 */
+                return true;
+            }
+        }
+
+        return super.mouseClicked(
+                mouseX,
+                mouseY,
+                button
+        );
     }
 
-    private String label(String n,String id){return n+" ["+(enabled(id)?"ON":"OFF")+"]";}
-    private boolean enabled(String id){TopuHudConfig c=ConfigManager.get();return switch(id){
-        case "armor"->c.armorHud;case "fps"->c.fpsCounter;case "ping"->c.pingDisplay;case "tps"->c.tpsDisplay;
-        case "cps"->c.cpsDisplay;case "combo"->c.comboCounter;case "totem"->c.totemCounter;case "effects"->c.potionEffects;
-        case "potion"->c.potionCounter;case "gapple"->c.gappleCounter;case "sprint"->c.autoSprint;case "sneak"->c.toggleSneak;
-        case "warning"->c.armorWarning;case "enemy"->c.enemyHealth;case "cooldown"->c.cooldown;default->false;};}
-    private void toggle(String id){TopuHudConfig c=ConfigManager.get();switch(id){
-        case "armor"->c.armorHud=!c.armorHud;case "fps"->c.fpsCounter=!c.fpsCounter;case "ping"->c.pingDisplay=!c.pingDisplay;
-        case "tps"->c.tpsDisplay=!c.tpsDisplay;case "cps"->c.cpsDisplay=!c.cpsDisplay;case "combo"->c.comboCounter=!c.comboCounter;
-        case "totem"->c.totemCounter=!c.totemCounter;case "effects"->c.potionEffects=!c.potionEffects;case "potion"->c.potionCounter=!c.potionCounter;
-        case "gapple"->c.gappleCounter=!c.gappleCounter;case "sprint"->c.autoSprint=!c.autoSprint;case "sneak"->c.toggleSneak=!c.toggleSneak;
-        case "warning"->c.armorWarning=!c.armorWarning;case "enemy"->c.enemyHealth=!c.enemyHealth;case "cooldown"->c.cooldown=!c.cooldown;}
-        ConfigManager.save();}
-    @Override public void render(DrawContext d,int mx,int my,float dt){
-        d.fill(0,0,width,height,0xEA101014);d.fill(0,0,width,42,0xFF18181D);
-        d.drawText(textRenderer,Text.literal("TOPU HUD"),16,12,0x00FF88,true);
-        d.drawText(textRenderer,Text.literal("Right Ctrl = move HUD • Right Alt = toggle sneak"),112,12,0xAAAAAA,false);
-        super.render(d,mx,my,dt);
+    @Override
+    public boolean mouseDragged(
+            double mouseX,
+            double mouseY,
+            int button,
+            double deltaX,
+            double deltaY
+    ) {
+
+        if (button != 0) {
+            return false;
+        }
+
+        if (dragging == null) {
+            return false;
+        }
+
+        int newX =
+                (int) mouseX -
+                        dragOffsetX;
+
+        int newY =
+                (int) mouseY -
+                        dragOffsetY;
+
+        /*
+         * Keep the HUD inside the screen.
+         */
+        int width =
+                HudManager.getWidthForEditor(
+                        dragging
+                );
+
+        int height =
+                HudManager.getHeightForEditor(
+                        dragging
+                );
+
+        newX = Math.max(
+                0,
+                Math.min(
+                        newX,
+                        this.width - width
+                )
+        );
+
+        newY = Math.max(
+                0,
+                Math.min(
+                        newY,
+                        this.height - height
+                )
+        );
+
+        HudManager.setPositionForEditor(
+                config,
+                dragging,
+                newX,
+                newY
+        );
+
+        draggingMouse = true;
+
+        return true;
     }
-    @Override public void close(){ConfigManager.save();HudManager.setMenuOpen(false);if(client!=null)client.setScreen(parent);}
+
+    @Override
+    public boolean mouseReleased(
+            double mouseX,
+            double mouseY,
+            int button
+    ) {
+
+        if (button == 0 && dragging != null) {
+
+            dragging = null;
+            draggingMouse = false;
+
+            ConfigManager.save();
+
+            return true;
+        }
+
+        return super.mouseReleased(
+                mouseX,
+                mouseY,
+                button
+        );
+    }
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+
+    @Override
+    public void render(
+            DrawContext drawContext,
+            int mouseX,
+            int mouseY,
+            float delta
+    ) {
+
+        /*
+         * Dark editor background.
+         */
+        drawContext.fill(
+                0,
+                0,
+                this.width,
+                this.height,
+                0xAA101010
+        );
+
+        /*
+         * Header.
+         */
+        drawContext.fill(
+                0,
+                0,
+                this.width,
+                28,
+                0xEE181818
+        );
+
+        drawContext.drawText(
+                this.textRenderer,
+                Text.literal("TOPU HUD EDITOR"),
+                10,
+                9,
+                0xFFFFFF,
+                true
+        );
+
+        /*
+         * Instructions.
+         */
+        drawContext.drawText(
+                this.textRenderer,
+                Text.literal(
+                        "Drag HUD elements • Release mouse to place"
+                ),
+                10,
+                36,
+                0xAAAAAA,
+                false
+        );
+
+        /*
+         * Draw HUD editor boxes.
+         */
+        for (HudManager.Id id :
+                HudManager.Id.values()) {
+
+            if (!HudManager.isEnabledForEditor(id)) {
+                continue;
+            }
+
+            int[] position =
+                    HudManager.getPositionForEditor(
+                            config,
+                            id
+                    );
+
+            int width =
+                    HudManager.getWidthForEditor(id);
+
+            int height =
+                    HudManager.getHeightForEditor(id);
+
+            boolean selected =
+                    dragging == id;
+
+            int borderColor =
+                    selected
+                            ? 0xFF00FF88
+                            : 0xFF777777;
+
+            /*
+             * Background.
+             */
+            drawContext.fill(
+                    position[0],
+                    position[1],
+                    position[0] + width,
+                    position[1] + height,
+                    selected
+                            ? 0x5533AA77
+                            : 0x55222222
+            );
+
+            /*
+             * Border.
+             */
+            drawBorder(
+                    drawContext,
+                    position[0],
+                    position[1],
+                    width,
+                    height,
+                    borderColor
+            );
+
+            /*
+             * Module name.
+             */
+            drawContext.drawText(
+                    this.textRenderer,
+                    getDisplayName(id),
+                    position[0] + 4,
+                    position[1] + 4,
+                    selected
+                            ? 0x00FF88
+                            : 0xFFFFFF,
+                    true
+            );
+        }
+
+        /*
+         * Let Minecraft render the Done button.
+         */
+        super.render(
+                drawContext,
+                mouseX,
+                mouseY,
+                delta
+        );
+    }
+
+    // ============================================================
+    // BORDER
+    // ============================================================
+
+    private void drawBorder(
+            DrawContext drawContext,
+            int x,
+            int y,
+            int width,
+            int height,
+            int color
+    ) {
+
+        drawContext.fill(
+                x,
+                y,
+                x + width,
+                y + 1,
+                color
+        );
+
+        drawContext.fill(
+                x,
+                y + height - 1,
+                x + width,
+                y + height,
+                color
+        );
+
+        drawContext.fill(
+                x,
+                y,
+                x + 1,
+                y + height,
+                color
+        );
+
+        drawContext.fill(
+                x + width - 1,
+                y,
+                x + width,
+                y + height,
+                color
+        );
+    }
+
+    // ============================================================
+    // DISPLAY NAMES
+    // ============================================================
+
+    private Text getDisplayName(
+            HudManager.Id id
+    ) {
+
+        return switch (id) {
+
+            case ARMOR ->
+                    Text.literal("Armor");
+
+            case FPS ->
+                    Text.literal("FPS");
+
+            case PING ->
+                    Text.literal("Ping");
+
+            case TPS ->
+                    Text.literal("TPS");
+
+            case CPS ->
+                    Text.literal("CPS");
+
+            case COMBO ->
+                    Text.literal("Combo");
+
+            case TOTEM ->
+                    Text.literal("Totems");
+
+            case POTION ->
+                    Text.literal("Potions");
+
+            case EFFECTS ->
+                    Text.literal("Effects");
+
+            case GAPPLE ->
+                    Text.literal("Gapples");
+
+            case WARNING ->
+                    Text.literal("Armor Warning");
+
+            case ENEMY ->
+                    Text.literal("Enemy HP");
+
+            case COOLDOWN ->
+                    Text.literal("Attack Cooldown");
+        };
+    }
 }
