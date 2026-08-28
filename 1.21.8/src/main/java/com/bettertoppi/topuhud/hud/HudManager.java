@@ -23,7 +23,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 
 import net.minecraft.text.Text;
-
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.MathHelper;
 
@@ -47,16 +46,13 @@ public final class HudManager {
     private static int dragOffsetX;
     private static int dragOffsetY;
 
-    private static final Deque<Long> clickTimes =
-            new ArrayDeque<>();
+    private static final Deque<Long> clickTimes = new ArrayDeque<>();
 
     private static long lastHitTime = 0L;
     private static int combo = 0;
 
     private static double tpsEstimate = 20.0;
-
-    private static long lastTickNanos =
-            System.nanoTime();
+    private static long lastTickNanos = System.nanoTime();
 
     private enum HudId {
         ARMOR,
@@ -83,43 +79,37 @@ public final class HudManager {
 
     public static void initialize() {
 
-        menuKey =
-                KeyBindingHelper.registerKeyBinding(
-                        new KeyBinding(
-                                "key.topuhud.menu",
-                                InputUtil.Type.KEYSYM,
-                                GLFW.GLFW_KEY_RIGHT_SHIFT,
-                                "category.topuhud"
-                        )
-                );
+        menuKey = KeyBindingHelper.registerKeyBinding(
+                new KeyBinding(
+                        "key.topuhud.menu",
+                        InputUtil.Type.KEYSYM,
+                        GLFW.GLFW_KEY_RIGHT_SHIFT,
+                        "category.topuhud"
+                )
+        );
 
-        editKey =
-                KeyBindingHelper.registerKeyBinding(
-                        new KeyBinding(
-                                "key.topuhud.edit",
-                                InputUtil.Type.KEYSYM,
-                                GLFW.GLFW_KEY_RIGHT_CONTROL,
-                                "category.topuhud"
-                        )
-                );
+        editKey = KeyBindingHelper.registerKeyBinding(
+                new KeyBinding(
+                        "key.topuhud.edit",
+                        InputUtil.Type.KEYSYM,
+                        GLFW.GLFW_KEY_RIGHT_CONTROL,
+                        "category.topuhud"
+                )
+        );
 
-        sneakKey =
-                KeyBindingHelper.registerKeyBinding(
-                        new KeyBinding(
-                                "key.topuhud.sneak",
-                                InputUtil.Type.KEYSYM,
-                                GLFW.GLFW_KEY_RIGHT_ALT,
-                                "category.topuhud"
-                        )
-                );
+        sneakKey = KeyBindingHelper.registerKeyBinding(
+                new KeyBinding(
+                        "key.topuhud.sneak",
+                        InputUtil.Type.KEYSYM,
+                        GLFW.GLFW_KEY_RIGHT_ALT,
+                        "category.topuhud"
+                )
+        );
 
         ClientTickEvents.END_CLIENT_TICK.register(
                 HudManager::tick
         );
 
-        /*
-         * Minecraft 1.21.8 / Fabric API HUD callback.
-         */
         HudRenderCallback.EVENT.register(
                 (drawContext, tickCounter) ->
                         HudManager.render(
@@ -134,17 +124,15 @@ public final class HudManager {
     // PUBLIC METHODS
     // ============================================================
 
-    public static void setMenuOpen(
-            boolean value) {
+    public static void setMenuOpen(boolean value) {
+        // Menu state is controlled by Minecraft's current screen.
     }
 
-    public static void setEditMode(
-            boolean value) {
+    public static void setEditMode(boolean value) {
 
         editMode = value;
 
-        ConfigManager.get().editMode =
-                value;
+        ConfigManager.get().editMode = value;
 
         if (!value) {
             draggingHud = null;
@@ -161,6 +149,8 @@ public final class HudManager {
 
     public static void registerHit() {
 
+        registerClick();
+
         lastHitTime =
                 System.currentTimeMillis();
 
@@ -171,12 +161,7 @@ public final class HudManager {
     // CLIENT TICK
     // ============================================================
 
-    private static void tick(
-            MinecraftClient client) {
-
-        // --------------------------------------------------------
-        // RIGHT SHIFT - MENU
-        // --------------------------------------------------------
+    private static void tick(MinecraftClient client) {
 
         if (menuKey != null) {
 
@@ -191,10 +176,6 @@ public final class HudManager {
             }
         }
 
-        // --------------------------------------------------------
-        // RIGHT CTRL - EDIT MODE
-        // --------------------------------------------------------
-
         if (editKey != null) {
 
             while (editKey.wasPressed()) {
@@ -204,10 +185,6 @@ public final class HudManager {
                 );
             }
         }
-
-        // --------------------------------------------------------
-        // RIGHT ALT - TOGGLE SNEAK
-        // --------------------------------------------------------
 
         if (sneakKey != null) {
 
@@ -224,10 +201,7 @@ public final class HudManager {
         TopuHudConfig config =
                 ConfigManager.get();
 
-        // --------------------------------------------------------
-        // TOGGLE SNEAK
-        // --------------------------------------------------------
-
+        // Toggle Sneak
         if (config.toggleSneak) {
 
             client.player.setSneaking(
@@ -235,10 +209,7 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // AUTO SPRINT
-        // --------------------------------------------------------
-
+        // Auto Sprint
         if (config.autoSprint &&
                 client.currentScreen == null &&
                 client.options.forwardKey.isPressed() &&
@@ -246,15 +217,10 @@ public final class HudManager {
                 client.player.getHungerManager()
                         .getFoodLevel() > 6) {
 
-            client.player.setSprinting(
-                    true
-            );
+            client.player.setSprinting(true);
         }
 
-        // --------------------------------------------------------
-        // TPS ESTIMATE
-        // --------------------------------------------------------
-
+        // TPS Estimate
         long now =
                 System.nanoTime();
 
@@ -278,7 +244,7 @@ public final class HudManager {
 
             tpsEstimate =
                     tpsEstimate * 0.94 +
-                            currentRate * 0.06;
+                    currentRate * 0.06;
 
             tpsEstimate =
                     MathHelper.clamp(
@@ -288,10 +254,7 @@ public final class HudManager {
                     );
         }
 
-        // --------------------------------------------------------
         // CPS
-        // --------------------------------------------------------
-
         long cutoff =
                 System.currentTimeMillis() -
                         1000L;
@@ -302,10 +265,7 @@ public final class HudManager {
             clickTimes.removeFirst();
         }
 
-        // --------------------------------------------------------
-        // COMBO RESET
-        // --------------------------------------------------------
-
+        // Combo Reset
         if (lastHitTime > 0L &&
                 System.currentTimeMillis() -
                         lastHitTime > 1500L) {
@@ -313,10 +273,7 @@ public final class HudManager {
             combo = 0;
         }
 
-        // --------------------------------------------------------
-        // HUD EDIT MODE
-        // --------------------------------------------------------
-
+        // HUD Editor
         if (editMode &&
                 client.currentScreen == null) {
 
@@ -350,11 +307,8 @@ public final class HudManager {
 
         } else {
 
-            leftMouseWasDown =
-                    false;
-
-            draggingHud =
-                    null;
+            leftMouseWasDown = false;
+            draggingHud = null;
         }
     }
 
@@ -372,8 +326,7 @@ public final class HudManager {
                         client.getWindow().getWidth();
 
         return (int) Math.round(
-                client.mouse.getX() *
-                        scale
+                client.mouse.getX() * scale
         );
     }
 
@@ -387,13 +340,12 @@ public final class HudManager {
                         client.getWindow().getHeight();
 
         return (int) Math.round(
-                client.mouse.getY() *
-                        scale
+                client.mouse.getY() * scale
         );
     }
 
     // ============================================================
-    // GET POSITION
+    // POSITION
     // ============================================================
 
     private static int[] getPosition(
@@ -482,10 +434,6 @@ public final class HudManager {
         };
     }
 
-    // ============================================================
-    // SET POSITION
-    // ============================================================
-
     private static void setPosition(
             TopuHudConfig config,
             HudId id,
@@ -565,8 +513,7 @@ public final class HudManager {
     // ENABLED
     // ============================================================
 
-    private static boolean isEnabled(
-            HudId id) {
+    private static boolean isEnabled(HudId id) {
 
         TopuHudConfig config =
                 ConfigManager.get();
@@ -618,49 +565,33 @@ public final class HudManager {
     // HUD SIZE
     // ============================================================
 
-    private static int getWidth(
-            HudId id) {
+    private static int getWidth(HudId id) {
 
         return switch (id) {
 
-            case ARMOR ->
-                    120;
+            case ARMOR -> 120;
+            case EFFECTS -> 180;
+            case WARNING -> 180;
+            case ENEMY -> 165;
+            case COOLDOWN -> 130;
 
-            case EFFECTS ->
-                    180;
-
-            case WARNING ->
-                    180;
-
-            case ENEMY ->
-                    165;
-
-            case COOLDOWN ->
-                    130;
-
-            default ->
-                    150;
+            default -> 150;
         };
     }
 
-    private static int getHeight(
-            HudId id) {
+    private static int getHeight(HudId id) {
 
         return switch (id) {
 
-            case ARMOR ->
-                    28;
+            case ARMOR -> 28;
+            case EFFECTS -> 80;
 
-            case EFFECTS ->
-                    80;
-
-            default ->
-                    22;
+            default -> 22;
         };
     }
 
     // ============================================================
-    // BEGIN DRAG
+    // DRAGGING
     // ============================================================
 
     private static void beginDrag(
@@ -703,8 +634,7 @@ public final class HudManager {
                             position[1] +
                                     getHeight(id)) {
 
-                draggingHud =
-                        id;
+                draggingHud = id;
 
                 dragOffsetX =
                         mouseX -
@@ -718,10 +648,6 @@ public final class HudManager {
             }
         }
     }
-
-    // ============================================================
-    // UPDATE DRAG
-    // ============================================================
 
     private static void updateDrag(
             MinecraftClient client) {
@@ -907,57 +833,69 @@ public final class HudManager {
             );
         }
 
-        // --------------------------------------------------------
-        // EDIT MODE
-        // --------------------------------------------------------
+        renderEditMode(
+                client,
+                drawContext,
+                config
+        );
+    }
 
-        if (editMode) {
+    // ============================================================
+    // EDIT MODE
+    // ============================================================
 
-            int screenWidth =
-                    client.getWindow()
-                            .getScaledWidth();
+    private static void renderEditMode(
+            MinecraftClient client,
+            DrawContext drawContext,
+            TopuHudConfig config) {
 
-            drawContext.fill(
-                    0,
-                    0,
-                    screenWidth,
-                    22,
-                    0x77000000
+        if (!editMode)
+            return;
+
+        int screenWidth =
+                client.getWindow()
+                        .getScaledWidth();
+
+        drawContext.fill(
+                0,
+                0,
+                screenWidth,
+                22,
+                0x77000000
+        );
+
+        drawContext.drawText(
+                client.textRenderer,
+                Text.literal(
+                        "TOPU HUD EDIT MODE - Right Ctrl to exit"
+                ),
+                8,
+                5,
+                0x00FF88,
+                true
+        );
+
+        for (HudId id :
+                HudId.values()) {
+
+            if (!isEnabled(id))
+                continue;
+
+            int[] position =
+                    getPosition(
+                            config,
+                            id
+                    );
+
+            drawContext.drawBorder(
+                    position[0] - 2,
+                    position[1] - 2,
+                    getWidth(id) + 4,
+                    getHeight(id) + 4,
+                    draggingHud == id
+                            ? 0xFF00FF88
+                            : 0x66777777
             );
-
-            drawContext.drawText(
-                    client.textRenderer,
-                    Text.literal(
-                            "TOPU HUD EDIT MODE - Right Ctrl to exit"
-                    ),
-                    8,
-                    5,
-                    0x00FF88,
-                    true
-            );
-
-            for (HudId id :
-                    HudId.values()) {
-
-                if (!isEnabled(id))
-                    continue;
-
-                int[] position =
-                        getPosition(
-                                config,
-                                id
-                        );
-
-                drawContext.drawBorder(
-                        position[0] - 2,
-                        position[1] - 2,
-                        getWidth(id) + 4,
-                        getHeight(id) + 4,
-                        draggingHud == id
-                                ? 0xFF00FF88
-                                : 0x66777777
-                );
-            }
         }
     }
 
@@ -971,18 +909,6 @@ public final class HudManager {
             int x,
             int y) {
 
-        /*
-         * 1.21.8:
-         * PlayerInventory exposes inventory stacks through the
-         * indexed stack accessors rather than the old getArmorStack()
-         * and offHand fields used in older mappings.
-         *
-         * Armor inventory indices:
-         * 39 = helmet
-         * 38 = chestplate
-         * 37 = leggings
-         * 36 = boots
-         */
         for (int i = 0; i < 4; i++) {
 
             int inventoryIndex =
@@ -1009,53 +935,53 @@ public final class HudManager {
                     y
             );
 
-            if (stack.isDamageable()) {
+            if (!stack.isDamageable())
+                continue;
 
-                int maxDamage =
-                        stack.getMaxDamage();
+            int maxDamage =
+                    stack.getMaxDamage();
 
-                int remaining =
-                        maxDamage -
-                                stack.getDamage();
+            int remaining =
+                    maxDamage -
+                            stack.getDamage();
 
-                double percent =
-                        maxDamage <= 0
-                                ? 100.0
-                                : 100.0 *
-                                remaining /
-                                maxDamage;
+            double percent =
+                    maxDamage <= 0
+                            ? 100.0
+                            : 100.0 *
+                            remaining /
+                            maxDamage;
 
-                int textColor;
+            int textColor;
 
-                if (percent <= 40.0) {
+            if (percent <= 40.0) {
 
-                    textColor =
-                            0xFF4444;
+                textColor =
+                        0xFF4444;
 
-                } else if (percent <= 70.0) {
+            } else if (percent <= 70.0) {
 
-                    textColor =
-                            0xFFD23F;
+                textColor =
+                        0xFFD23F;
 
-                } else {
+            } else {
 
-                    textColor =
-                            0x55FF55;
-                }
-
-                drawContext.drawText(
-                        client.textRenderer,
-                        Text.literal(
-                                String.valueOf(
-                                        remaining
-                                )
-                        ),
-                        slotX + 16,
-                        y + 17,
-                        textColor,
-                        true
-                );
+                textColor =
+                        0x55FF55;
             }
+
+            drawContext.drawText(
+                    client.textRenderer,
+                    Text.literal(
+                            String.valueOf(
+                                    remaining
+                            )
+                    ),
+                    slotX + 16,
+                    y + 17,
+                    textColor,
+                    true
+            );
         }
     }
 
@@ -1069,8 +995,7 @@ public final class HudManager {
             int x,
             int y) {
 
-        int ping =
-                -1;
+        int ping = -1;
 
         if (client.getNetworkHandler() != null &&
                 client.player != null) {
@@ -1114,8 +1039,7 @@ public final class HudManager {
             int x,
             int y) {
 
-        int count =
-                0;
+        int count = 0;
 
         for (ItemStack stack :
                 player.getInventory()
@@ -1128,15 +1052,9 @@ public final class HudManager {
             }
         }
 
-        /*
-         * In 1.21.8, offhand can be read using the inventory's
-         * offhand accessor.
-         */
         ItemStack offhand =
                 player.getInventory()
-                        .getStack(
-                                40
-                        );
+                        .getStack(40);
 
         if (offhand.isOf(item)) {
 
@@ -1164,19 +1082,15 @@ public final class HudManager {
             int x,
             int y) {
 
-        int count =
-                0;
+        int count = 0;
 
         for (ItemStack stack :
                 player.getInventory()
                         .getMainStacks()) {
 
-            if (stack.isOf(
-                            Items.POTION) ||
-                    stack.isOf(
-                            Items.SPLASH_POTION) ||
-                    stack.isOf(
-                            Items.LINGERING_POTION)) {
+            if (stack.isOf(Items.POTION) ||
+                    stack.isOf(Items.SPLASH_POTION) ||
+                    stack.isOf(Items.LINGERING_POTION)) {
 
                 count +=
                         stack.getCount();
@@ -1185,16 +1099,11 @@ public final class HudManager {
 
         ItemStack offhand =
                 player.getInventory()
-                        .getStack(
-                                40
-                        );
+                        .getStack(40);
 
-        if (offhand.isOf(
-                        Items.POTION) ||
-                offhand.isOf(
-                        Items.SPLASH_POTION) ||
-                offhand.isOf(
-                        Items.LINGERING_POTION)) {
+        if (offhand.isOf(Items.POTION) ||
+                offhand.isOf(Items.SPLASH_POTION) ||
+                offhand.isOf(Items.LINGERING_POTION)) {
 
             count +=
                     offhand.getCount();
@@ -1219,8 +1128,7 @@ public final class HudManager {
             int x,
             int y) {
 
-        int count =
-                0;
+        int count = 0;
 
         for (ItemStack stack :
                 player.getInventory()
@@ -1238,9 +1146,7 @@ public final class HudManager {
 
         ItemStack offhand =
                 player.getInventory()
-                        .getStack(
-                                40
-                        );
+                        .getStack(40);
 
         if (offhand.isOf(
                         Items.GOLDEN_APPLE) ||
@@ -1270,11 +1176,8 @@ public final class HudManager {
             int x,
             int y) {
 
-        int currentY =
-                y;
-
-        int shown =
-                0;
+        int currentY = y;
+        int shown = 0;
 
         for (StatusEffectInstance effect :
                 player.getStatusEffects()) {
@@ -1302,9 +1205,7 @@ public final class HudManager {
                     currentY
             );
 
-            currentY +=
-                    12;
-
+            currentY += 12;
             shown++;
 
             if (shown >= 6)
@@ -1473,8 +1374,7 @@ public final class HudManager {
                 y + 14,
                 x +
                         (int)
-                                (155 *
-                                        ratio),
+                                (155 * ratio),
                 y + 18,
                 barColor
         );
@@ -1496,8 +1396,7 @@ public final class HudManager {
                                 0.0f
                         );
 
-        int width =
-                120;
+        int width = 120;
 
         drawContext.fill(
                 x,
