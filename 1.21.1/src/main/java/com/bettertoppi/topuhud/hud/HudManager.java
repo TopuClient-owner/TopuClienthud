@@ -34,744 +34,993 @@ import java.util.Deque;
 
 public final class HudManager {
 
-    private static KeyBinding menuKey;
-    private static KeyBinding editKey;
-    private static KeyBinding sneakKey;
 
-    private static boolean sneakToggled;
-    private static boolean editMode;
+private static KeyBinding menuKey;
+private static KeyBinding editKey;
+private static KeyBinding sneakKey;
 
-    private static boolean leftMouseWasDown;
+private static boolean sneakToggled;
+private static boolean editMode;
+private static boolean leftMouseWasDown;
 
-    private static HudId draggingHud;
-    private static int dragOffsetX;
-    private static int dragOffsetY;
+private static Id draggingHud;
 
-    private static final Deque<Long> clickTimes =
-            new ArrayDeque<>();
+private static int dragOffsetX;
+private static int dragOffsetY;
 
-    private static long lastHitTime;
-    private static int combo;
+private static final Deque<Long> clickTimes =
+        new ArrayDeque<>();
 
-    /*
-     * Client-side TPS estimate.
-     *
-     * This is not authoritative server TPS.
-     * It is simply an estimate based on client tick timing.
-     */
-    private static double tpsEstimate = 20.0;
+private static long lastHitTime;
+private static int combo;
 
-    private static long lastTickNanos =
-            System.nanoTime();
+private static double tpsEstimate = 20.0;
 
-    /*
-     * HUD element identifiers.
-     *
-     * PUBLIC so TopuScreenEditor can access them.
-     */
-    public enum Id {
-        ARMOR,
-        FPS,
-        PING,
-        TPS,
-        CPS,
-        COMBO,
-        TOTEM,
-        POTION,
-        EFFECTS,
-        GAPPLE,
-        WARNING,
-        ENEMY,
-        COOLDOWN
+private static long lastTickNanos =
+        System.nanoTime();
+
+/*
+ * IMPORTANT:
+ *
+ * This enum is public because TopuScreenEditor
+ * uses HudManager.Id.
+ */
+public enum Id {
+    ARMOR,
+    FPS,
+    PING,
+    TPS,
+    CPS,
+    COMBO,
+    TOTEM,
+    POTION,
+    EFFECTS,
+    GAPPLE,
+    WARNING,
+    ENEMY,
+    COOLDOWN
+}
+
+private HudManager() {
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
+public static void initialize() {
+
+    menuKey =
+            KeyBindingHelper.registerKeyBinding(
+                    new KeyBinding(
+                            "key.topuhud.menu",
+                            InputUtil.Type.KEYSYM,
+                            GLFW.GLFW_KEY_RIGHT_SHIFT,
+                            "category.topuhud"
+                    )
+            );
+
+    editKey =
+            KeyBindingHelper.registerKeyBinding(
+                    new KeyBinding(
+                            "key.topuhud.edit",
+                            InputUtil.Type.KEYSYM,
+                            GLFW.GLFW_KEY_RIGHT_CONTROL,
+                            "category.topuhud"
+                    )
+            );
+
+    sneakKey =
+            KeyBindingHelper.registerKeyBinding(
+                    new KeyBinding(
+                            "key.topuhud.sneak",
+                            InputUtil.Type.KEYSYM,
+                            GLFW.GLFW_KEY_RIGHT_ALT,
+                            "category.topuhud"
+                    )
+            );
+
+    ClientTickEvents.END_CLIENT_TICK.register(
+            HudManager::tick
+    );
+
+    HudRenderCallback.EVENT.register(
+            (drawContext, tickCounter) ->
+                    HudManager.render(
+                            MinecraftClient.getInstance(),
+                            drawContext,
+                            tickCounter.getTickDelta(true)
+                    )
+    );
+}
+
+// ============================================================
+// PUBLIC STATE
+// ============================================================
+
+public static void setMenuOpen(boolean value) {
+}
+
+public static void setEditMode(boolean value) {
+
+    editMode = value;
+
+    ConfigManager.get().editMode =
+            value;
+
+    MinecraftClient client =
+            MinecraftClient.getInstance();
+
+    if (value) {
+
+        if (client.currentScreen == null) {
+            client.mouse.unlockCursor();
+        }
+
+    } else {
+
+        draggingHud = null;
+
+        if (client.currentScreen == null) {
+            client.mouse.lockCursor();
+        }
+
+        ConfigManager.save();
     }
+}
 
-    private HudManager() {
-    }
+public static boolean isEditMode() {
+    return editMode;
+}
 
-    // ============================================================
-    // INITIALIZATION
-    // ============================================================
+public static void registerClick() {
 
-    public static void initialize() {
+    clickTimes.addLast(
+            System.currentTimeMillis()
+    );
+}
 
-        menuKey =
-                KeyBindingHelper.registerKeyBinding(
-                        new KeyBinding(
-                                "key.topuhud.menu",
-                                InputUtil.Type.KEYSYM,
-                                GLFW.GLFW_KEY_RIGHT_SHIFT,
-                                "category.topuhud"
-                        )
-                );
+public static void registerHit() {
 
-        /*
-         * RIGHT CTRL = HUD EDIT MODE + MOUSE CURSOR
-         */
-        editKey =
-                KeyBindingHelper.registerKeyBinding(
-                        new KeyBinding(
-                                "key.topuhud.edit",
-                                InputUtil.Type.KEYSYM,
-                                GLFW.GLFW_KEY_RIGHT_CONTROL,
-                                "category.topuhud"
-                        )
-                );
+    registerClick();
 
-        sneakKey =
-                KeyBindingHelper.registerKeyBinding(
-                        new KeyBinding(
-                                "key.topuhud.sneak",
-                                InputUtil.Type.KEYSYM,
-                                GLFW.GLFW_KEY_RIGHT_ALT,
-                                "category.topuhud"
-                        )
-                );
+    lastHitTime =
+            System.currentTimeMillis();
 
-        ClientTickEvents.END_CLIENT_TICK.register(
-                HudManager::tick
-        );
+    combo++;
+}
 
-        /*
-         * Fabric API 1.21.1 HUD callback.
-         */
-        HudRenderCallback.EVENT.register(
-                (drawContext, tickCounter) ->
-                        HudManager.render(
-                                MinecraftClient.getInstance(),
-                                drawContext,
-                                tickCounter.getTickDelta(true)
-                        )
-        );
-    }
+// ============================================================
+// CLIENT TICK
+// ============================================================
 
-    // ============================================================
-    // PUBLIC STATE
-    // ============================================================
+private static void tick(
+        MinecraftClient client) {
 
-    public static void setMenuOpen(
-            boolean value) {
+    if (menuKey != null) {
 
-        /*
-         * Menu state itself is controlled by Minecraft's
-         * current screen.
-         *
-         * This method exists for compatibility
-         * with TopuHudScreen.
-         */
-    }
-
-    public static void setEditMode(
-            boolean value) {
-
-        editMode = value;
-
-        ConfigManager.get().editMode =
-                value;
-
-        MinecraftClient client =
-                MinecraftClient.getInstance();
-
-        /*
-         * RIGHT CTRL EDIT MODE BEHAVIOR
-         *
-         * Entering edit mode:
-         *      Unlock mouse cursor.
-         *
-         * Leaving edit mode:
-         *      Lock mouse cursor again.
-         */
-        if (value) {
+        while (menuKey.wasPressed()) {
 
             if (client.currentScreen == null) {
-                client.mouse.unlockCursor();
-            }
 
-        } else {
+                client.setScreen(
+                        new TopuHudScreen(null)
+                );
+            }
+        }
+    }
+
+    if (editKey != null) {
+
+        while (editKey.wasPressed()) {
+
+            setEditMode(
+                    !editMode
+            );
+        }
+    }
+
+    if (sneakKey != null) {
+
+        while (sneakKey.wasPressed()) {
+
+            sneakToggled =
+                    !sneakToggled;
+        }
+    }
+
+    if (client.player == null) {
+        return;
+    }
+
+    TopuHudConfig config =
+            ConfigManager.get();
+
+    // --------------------------------------------------------
+    // TOGGLE SNEAK
+    // --------------------------------------------------------
+
+    if (config.toggleSneak) {
+
+        client.player.setSneaking(
+                sneakToggled
+        );
+    }
+
+    // --------------------------------------------------------
+    // AUTO SPRINT
+    // --------------------------------------------------------
+
+    if (config.autoSprint &&
+            client.currentScreen == null &&
+            client.options.forwardKey.isPressed() &&
+            !client.player.isSneaking() &&
+            client.player.getHungerManager()
+                    .getFoodLevel() > 6) {
+
+        client.player.setSprinting(
+                true
+        );
+    }
+
+    // --------------------------------------------------------
+    // TPS ESTIMATE
+    // --------------------------------------------------------
+
+    long now =
+            System.nanoTime();
+
+    long delta =
+            now - lastTickNanos;
+
+    lastTickNanos =
+            now;
+
+    if (delta > 0) {
+
+        double tickRate =
+                1_000_000_000.0 /
+                delta;
+
+        tickRate =
+                Math.min(
+                        20.0,
+                        tickRate
+                );
+
+        tpsEstimate =
+                tpsEstimate * 0.94 +
+                tickRate * 0.06;
+
+        tpsEstimate =
+                MathHelper.clamp(
+                        tpsEstimate,
+                        0.0,
+                        20.0
+                );
+    }
+
+    // --------------------------------------------------------
+    // CPS
+    // --------------------------------------------------------
+
+    long cutoff =
+            System.currentTimeMillis() -
+            1000L;
+
+    while (!clickTimes.isEmpty() &&
+            clickTimes.peekFirst() < cutoff) {
+
+        clickTimes.removeFirst();
+    }
+
+    // --------------------------------------------------------
+    // COMBO TIMEOUT
+    // --------------------------------------------------------
+
+    if (System.currentTimeMillis() -
+            lastHitTime > 1500L) {
+
+        combo = 0;
+    }
+
+    // --------------------------------------------------------
+    // HUD EDIT MODE
+    // --------------------------------------------------------
+
+    if (editMode &&
+            client.currentScreen == null) {
+
+        boolean mouseDown =
+                GLFW.glfwGetMouseButton(
+                        client.getWindow().getHandle(),
+                        GLFW.GLFW_MOUSE_BUTTON_LEFT
+                ) == GLFW.GLFW_PRESS;
+
+        if (mouseDown &&
+                !leftMouseWasDown) {
+
+            beginDrag(client);
+        }
+
+        if (mouseDown) {
+
+            updateDrag(client);
+        }
+
+        if (!mouseDown &&
+                leftMouseWasDown) {
 
             draggingHud = null;
 
-            if (client.currentScreen == null) {
-                client.mouse.lockCursor();
-            }
-
             ConfigManager.save();
         }
+
+        leftMouseWasDown =
+                mouseDown;
+
+    } else {
+
+        leftMouseWasDown = false;
+        draggingHud = null;
     }
+}
 
-    public static void registerClick() {
+// ============================================================
+// MOUSE POSITION
+// ============================================================
 
-        clickTimes.addLast(
-                System.currentTimeMillis()
-        );
-    }
+private static int getMouseGuiX(
+        MinecraftClient client) {
 
-    public static void registerHit() {
+    double scale =
+            client.getWindow().getScaledWidth() /
+            (double) client.getWindow().getWidth();
 
-        registerClick();
+    return (int) Math.round(
+            client.mouse.getX() * scale
+    );
+}
 
-        lastHitTime =
-                System.currentTimeMillis();
+private static int getMouseGuiY(
+        MinecraftClient client) {
 
-        combo++;
-    }
+    double scale =
+            client.getWindow().getScaledHeight() /
+            (double) client.getWindow().getHeight();
 
-    // ============================================================
-    // CLIENT TICK
-    // ============================================================
+    return (int) Math.round(
+            client.mouse.getY() * scale
+    );
+}
 
-    private static void tick(
-            MinecraftClient client) {
+// ============================================================
+// HUD POSITION
+// ============================================================
 
-        /*
-         * RIGHT SHIFT
-         *
-         * Open TopuHUD menu.
-         */
-        if (menuKey != null) {
+private static int[] getPosition(
+        TopuHudConfig config,
+        Id id) {
 
-            while (menuKey.wasPressed()) {
+    return switch (id) {
 
-                if (client.currentScreen == null) {
+        case ARMOR ->
+                new int[]{
+                        config.armorX,
+                        config.armorY
+                };
 
-                    client.setScreen(
-                            new TopuHudScreen(null)
-                    );
-                }
-            }
+        case FPS ->
+                new int[]{
+                        config.fpsX,
+                        config.fpsY
+                };
+
+        case PING ->
+                new int[]{
+                        config.pingX,
+                        config.pingY
+                };
+
+        case TPS ->
+                new int[]{
+                        config.tpsX,
+                        config.tpsY
+                };
+
+        case CPS ->
+                new int[]{
+                        config.cpsX,
+                        config.cpsY
+                };
+
+        case COMBO ->
+                new int[]{
+                        config.comboX,
+                        config.comboY
+                };
+
+        case TOTEM ->
+                new int[]{
+                        config.totemX,
+                        config.totemY
+                };
+
+        case POTION ->
+                new int[]{
+                        config.potionX,
+                        config.potionY
+                };
+
+        case EFFECTS ->
+                new int[]{
+                        config.effectsX,
+                        config.effectsY
+                };
+
+        case GAPPLE ->
+                new int[]{
+                        config.gappleX,
+                        config.gappleY
+                };
+
+        case WARNING ->
+                new int[]{
+                        config.warningX,
+                        config.warningY
+                };
+
+        case ENEMY ->
+                new int[]{
+                        config.enemyHealthX,
+                        config.enemyHealthY
+                };
+
+        case COOLDOWN ->
+                new int[]{
+                        config.cooldownX,
+                        config.cooldownY
+                };
+    };
+}
+
+private static void setPosition(
+        TopuHudConfig config,
+        Id id,
+        int x,
+        int y) {
+
+    switch (id) {
+
+        case ARMOR -> {
+            config.armorX = x;
+            config.armorY = y;
         }
 
-        /*
-         * RIGHT CTRL
-         *
-         * Toggle HUD edit mode.
-         */
-        if (editKey != null) {
+        case FPS -> {
+            config.fpsX = x;
+            config.fpsY = y;
+        }
 
-            while (editKey.wasPressed()) {
+        case PING -> {
+            config.pingX = x;
+            config.pingY = y;
+        }
 
-                setEditMode(
-                        !editMode
+        case TPS -> {
+            config.tpsX = x;
+            config.tpsY = y;
+        }
+
+        case CPS -> {
+            config.cpsX = x;
+            config.cpsY = y;
+        }
+
+        case COMBO -> {
+            config.comboX = x;
+            config.comboY = y;
+        }
+
+        case TOTEM -> {
+            config.totemX = x;
+            config.totemY = y;
+        }
+
+        case POTION -> {
+            config.potionX = x;
+            config.potionY = y;
+        }
+
+        case EFFECTS -> {
+            config.effectsX = x;
+            config.effectsY = y;
+        }
+
+        case GAPPLE -> {
+            config.gappleX = x;
+            config.gappleY = y;
+        }
+
+        case WARNING -> {
+            config.warningX = x;
+            config.warningY = y;
+        }
+
+        case ENEMY -> {
+            config.enemyHealthX = x;
+            config.enemyHealthY = y;
+        }
+
+        case COOLDOWN -> {
+            config.cooldownX = x;
+            config.cooldownY = y;
+        }
+    }
+}
+
+// ============================================================
+// ENABLED
+// ============================================================
+
+private static boolean isEnabled(
+        Id id) {
+
+    TopuHudConfig config =
+            ConfigManager.get();
+
+    return switch (id) {
+
+        case ARMOR ->
+                config.armorHud;
+
+        case FPS ->
+                config.fpsCounter;
+
+        case PING ->
+                config.pingDisplay;
+
+        case TPS ->
+                config.tpsDisplay;
+
+        case CPS ->
+                config.cpsDisplay;
+
+        case COMBO ->
+                config.comboCounter;
+
+        case TOTEM ->
+                config.totemCounter;
+
+        case POTION ->
+                config.potionCounter;
+
+        case EFFECTS ->
+                config.potionEffects;
+
+        case GAPPLE ->
+                config.gappleCounter;
+
+        case WARNING ->
+                config.armorWarning;
+
+        case ENEMY ->
+                config.enemyHealth;
+
+        case COOLDOWN ->
+                config.cooldown;
+    };
+}
+
+// ============================================================
+// PUBLIC EDITOR API
+// ============================================================
+
+public static boolean isEnabledForEditor(
+        Id id) {
+
+    return isEnabled(id);
+}
+
+public static int[] getPositionForEditor(
+        TopuHudConfig config,
+        Id id) {
+
+    return getPosition(
+            config,
+            id
+    );
+}
+
+public static void setPositionForEditor(
+        TopuHudConfig config,
+        Id id,
+        int x,
+        int y) {
+
+    setPosition(
+            config,
+            id,
+            x,
+            y
+    );
+}
+
+public static int getWidthForEditor(
+        Id id) {
+
+    return getWidth(id);
+}
+
+public static int getHeightForEditor(
+        Id id) {
+
+    return getHeight(id);
+}
+
+// ============================================================
+// HUD SIZE
+// ============================================================
+
+private static int getWidth(
+        Id id) {
+
+    return switch (id) {
+
+        case ARMOR ->
+                120;
+
+        case EFFECTS ->
+                180;
+
+        case WARNING ->
+                180;
+
+        case ENEMY ->
+                165;
+
+        case COOLDOWN ->
+                130;
+
+        default ->
+                150;
+    };
+}
+
+private static int getHeight(
+        Id id) {
+
+    return switch (id) {
+
+        case ARMOR ->
+                28;
+
+        case EFFECTS ->
+                80;
+
+        default ->
+                22;
+    };
+}
+
+// ============================================================
+// DRAGGING
+// ============================================================
+
+private static void beginDrag(
+        MinecraftClient client) {
+
+    int mouseX =
+            getMouseGuiX(client);
+
+    int mouseY =
+            getMouseGuiY(client);
+
+    Id[] ids =
+            Id.values();
+
+    /*
+     * Search backwards so later HUD elements
+     * have priority when overlapping.
+     */
+    for (int i = ids.length - 1;
+         i >= 0;
+         i--) {
+
+        Id id =
+                ids[i];
+
+        if (!isEnabled(id)) {
+            continue;
+        }
+
+        int[] position =
+                getPosition(
+                        ConfigManager.get(),
+                        id
                 );
-            }
-        }
 
-        /*
-         * RIGHT ALT
-         *
-         * Toggle sneak.
-         */
-        if (sneakKey != null) {
+        int width =
+                getWidth(id);
 
-            while (sneakKey.wasPressed()) {
+        int height =
+                getHeight(id);
 
-                sneakToggled =
-                        !sneakToggled;
-            }
-        }
-
-        if (client.player == null) {
-            return;
-        }
-
-        TopuHudConfig config =
-                ConfigManager.get();
-
-        // --------------------------------------------------------
-        // TOGGLE SNEAK
-        // --------------------------------------------------------
-
-        if (config.toggleSneak) {
-
-            client.player.setSneaking(
-                    sneakToggled
-            );
-        }
-
-        // --------------------------------------------------------
-        // AUTO SPRINT
-        // --------------------------------------------------------
-
-        if (config.autoSprint &&
-                client.currentScreen == null &&
-                client.options.forwardKey.isPressed() &&
-                !client.player.isSneaking() &&
-                client.player.getHungerManager()
-                        .getFoodLevel() > 6) {
-
-            client.player.setSprinting(
-                    true
-            );
-        }
-
-        // --------------------------------------------------------
-        // TPS ESTIMATE
-        // --------------------------------------------------------
-
-        long now =
-                System.nanoTime();
-
-        long delta =
-                now - lastTickNanos;
-
-        lastTickNanos =
-                now;
-
-        if (delta > 0) {
-
-            double tickRate =
-                    1_000_000_000.0 /
-                    delta;
-
-            tickRate =
-                    Math.min(
-                            20.0,
-                            tickRate
-                    );
-
-            tpsEstimate =
-                    tpsEstimate * 0.94 +
-                    tickRate * 0.06;
-
-            tpsEstimate =
-                    MathHelper.clamp(
-                            tpsEstimate,
-                            0.0,
-                            20.0
-                    );
-        }
-
-        // --------------------------------------------------------
-        // CPS WINDOW
-        // --------------------------------------------------------
-
-        long cutoff =
-                System.currentTimeMillis() -
-                1000L;
-
-        while (!clickTimes.isEmpty() &&
-                clickTimes.peekFirst() < cutoff) {
-
-            clickTimes.removeFirst();
-        }
-
-        // --------------------------------------------------------
-        // COMBO TIMEOUT
-        // --------------------------------------------------------
-
-        if (System.currentTimeMillis() -
-                lastHitTime > 1500L) {
-
-            combo = 0;
-        }
-
-        // --------------------------------------------------------
-        // HUD EDIT MODE
-        // --------------------------------------------------------
-
-        if (editMode &&
-                client.currentScreen == null) {
-
-            boolean mouseDown =
-                    GLFW.glfwGetMouseButton(
-                            client.getWindow().getHandle(),
-                            GLFW.GLFW_MOUSE_BUTTON_LEFT
-                    ) == GLFW.GLFW_PRESS;
-
-            if (mouseDown &&
-                    !leftMouseWasDown) {
-
-                beginDrag(client);
-            }
-
-            if (mouseDown) {
-
-                updateDrag(client);
-            }
-
-            if (!mouseDown &&
-                    leftMouseWasDown) {
-
-                draggingHud = null;
-
-                ConfigManager.save();
-            }
-
-            leftMouseWasDown =
-                    mouseDown;
-
-        } else {
-
-            leftMouseWasDown =
-                    false;
+        if (mouseX >= position[0] &&
+                mouseX <= position[0] + width &&
+                mouseY >= position[1] &&
+                mouseY <= position[1] + height) {
 
             draggingHud =
-                    null;
+                    id;
+
+            dragOffsetX =
+                    mouseX -
+                    position[0];
+
+            dragOffsetY =
+                    mouseY -
+                    position[1];
+
+            return;
         }
     }
+}
 
-    // ============================================================
-    // MOUSE POSITION
-    // ============================================================
+private static void updateDrag(
+        MinecraftClient client) {
 
-    private static int getMouseGuiX(
-            MinecraftClient client) {
+    if (draggingHud == null) {
+        return;
+    }
 
-        double scale =
-                client.getWindow().getScaledWidth() /
-                (double) client.getWindow().getWidth();
+    int mouseX =
+            getMouseGuiX(client);
 
-        return (int) Math.round(
-                client.mouse.getX() * scale
+    int mouseY =
+            getMouseGuiY(client);
+
+    int width =
+            getWidth(draggingHud);
+
+    int height =
+            getHeight(draggingHud);
+
+    int screenWidth =
+            client.getWindow()
+                    .getScaledWidth();
+
+    int screenHeight =
+            client.getWindow()
+                    .getScaledHeight();
+
+    int newX =
+            mouseX -
+            dragOffsetX;
+
+    int newY =
+            mouseY -
+            dragOffsetY;
+
+    newX =
+            Math.max(
+                    0,
+                    Math.min(
+                            newX,
+                            Math.max(
+                                    0,
+                                    screenWidth - width
+                            )
+                    )
+            );
+
+    newY =
+            Math.max(
+                    22,
+                    Math.min(
+                            newY,
+                            Math.max(
+                                    22,
+                                    screenHeight - height
+                            )
+                    )
+            );
+
+    setPosition(
+            ConfigManager.get(),
+            draggingHud,
+            newX,
+            newY
+    );
+}
+
+// ============================================================
+// HUD RENDER
+// ============================================================
+
+private static void render(
+        MinecraftClient client,
+        DrawContext drawContext,
+        float tickDelta) {
+
+    if (client.player == null ||
+            client.world == null) {
+
+        return;
+    }
+
+    TopuHudConfig config =
+            ConfigManager.get();
+
+    if (config.armorHud) {
+
+        renderArmor(
+                client,
+                drawContext,
+                config.armorX,
+                config.armorY
         );
     }
 
-    private static int getMouseGuiY(
-            MinecraftClient client) {
+    if (config.fpsCounter) {
 
-        double scale =
-                client.getWindow().getScaledHeight() /
-                (double) client.getWindow().getHeight();
-
-        return (int) Math.round(
-                client.mouse.getY() * scale
+        drawText(
+                drawContext,
+                "FPS: " +
+                        client.getCurrentFps(),
+                config.fpsX,
+                config.fpsY
         );
     }
 
-    // ============================================================
-    // HUD POSITION
-    // ============================================================
-
-    private static int[] getPosition(
-            TopuHudConfig config,
-            HudId id) {
-
-        return switch (id) {
-
-            case ARMOR ->
-                    new int[]{
-                            config.armorX,
-                            config.armorY
-                    };
-
-            case FPS ->
-                    new int[]{
-                            config.fpsX,
-                            config.fpsY
-                    };
-
-            case PING ->
-                    new int[]{
-                            config.pingX,
-                            config.pingY
-                    };
-
-            case TPS ->
-                    new int[]{
-                            config.tpsX,
-                            config.tpsY
-                    };
-
-            case CPS ->
-                    new int[]{
-                            config.cpsX,
-                            config.cpsY
-                    };
-
-            case COMBO ->
-                    new int[]{
-                            config.comboX,
-                            config.comboY
-                    };
-
-            case TOTEM ->
-                    new int[]{
-                            config.totemX,
-                            config.totemY
-                    };
-
-            case POTION ->
-                    new int[]{
-                            config.potionX,
-                            config.potionY
-                    };
-
-            case EFFECTS ->
-                    new int[]{
-                            config.effectsX,
-                            config.effectsY
-                    };
-
-            case GAPPLE ->
-                    new int[]{
-                            config.gappleX,
-                            config.gappleY
-                    };
-
-            case WARNING ->
-                    new int[]{
-                            config.warningX,
-                            config.warningY
-                    };
-
-            case ENEMY ->
-                    new int[]{
-                            config.enemyHealthX,
-                            config.enemyHealthY
-                    };
-
-            case COOLDOWN ->
-                    new int[]{
-                            config.cooldownX,
-                            config.cooldownY
-                    };
-        };
-    }
-
-    private static void setPosition(
-            TopuHudConfig config,
-            HudId id,
-            int x,
-            int y) {
-
-        switch (id) {
-
-            case ARMOR -> {
-                config.armorX = x;
-                config.armorY = y;
-            }
-
-            case FPS -> {
-                config.fpsX = x;
-                config.fpsY = y;
-            }
-
-            case PING -> {
-                config.pingX = x;
-                config.pingY = y;
-            }
-
-            case TPS -> {
-                config.tpsX = x;
-                config.tpsY = y;
-            }
-
-            case CPS -> {
-                config.cpsX = x;
-                config.cpsY = y;
-            }
-
-            case COMBO -> {
-                config.comboX = x;
-                config.comboY = y;
-            }
-
-            case TOTEM -> {
-                config.totemX = x;
-                config.totemY = y;
-            }
-
-            case POTION -> {
-                config.potionX = x;
-                config.potionY = y;
-            }
-
-            case EFFECTS -> {
-                config.effectsX = x;
-                config.effectsY = y;
-            }
-
-            case GAPPLE -> {
-                config.gappleX = x;
-                config.gappleY = y;
-            }
-
-            case WARNING -> {
-                config.warningX = x;
-                config.warningY = y;
-            }
-
-            case ENEMY -> {
-                config.enemyHealthX = x;
-                config.enemyHealthY = y;
-            }
-
-            case COOLDOWN -> {
-                config.cooldownX = x;
-                config.cooldownY = y;
-            }
-        }
-    }
-
-    // ============================================================
-    // ENABLED
-    // ============================================================
-
-    private static boolean isEnabled(
-            HudId id) {
-
-        TopuHudConfig config =
-                ConfigManager.get();
-
-        return switch (id) {
-
-            case ARMOR ->
-                    config.armorHud;
-
-            case FPS ->
-                    config.fpsCounter;
-
-            case PING ->
-                    config.pingDisplay;
-
-            case TPS ->
-                    config.tpsDisplay;
-
-            case CPS ->
-                    config.cpsDisplay;
-
-            case COMBO ->
-                    config.comboCounter;
-
-            case TOTEM ->
-                    config.totemCounter;
-
-            case POTION ->
-                    config.potionCounter;
-
-            case EFFECTS ->
-                    config.potionEffects;
-
-            case GAPPLE ->
-                    config.gappleCounter;
-
-            case WARNING ->
-                    config.armorWarning;
-
-            case ENEMY ->
-                    config.enemyHealth;
-
-            case COOLDOWN ->
-                    config.cooldown;
-        };
-    }
-
-    // ============================================================
-    // HUD SIZE
-    // ============================================================
-
-    private static int getWidth(
-            HudId id) {
-
-        return switch (id) {
-
-            case ARMOR ->
-                    120;
-
-            case EFFECTS ->
-                    180;
-
-            case WARNING ->
-                    180;
-
-            case ENEMY ->
-                    165;
-
-            case COOLDOWN ->
-                    130;
-
-            default ->
-                    150;
-        };
-    }
-
-    private static int getHeight(
-            HudId id) {
-
-        return switch (id) {
-
-            case ARMOR ->
-                    28;
-
-            case EFFECTS ->
-                    80;
-
-            default ->
-                    22;
-        };
-    }
-
-    // ============================================================
-    // EDITOR API
-    // ============================================================
-
-    public static boolean isEnabledForEditor(
-            HudId id) {
-
-        return isEnabled(id);
-    }
-
-    public static int[] getPositionForEditor(
-            TopuHudConfig config,
-            HudId id) {
-
-        return getPosition(
-                config,
-                id
+    if (config.pingDisplay) {
+
+        renderPing(
+                client,
+                drawContext,
+                config.pingX,
+                config.pingY
         );
     }
 
-    public static void setPositionForEditor(
-            TopuHudConfig config,
-            HudId id,
-            int x,
-            int y) {
+    if (config.tpsDisplay) {
 
-        setPosition(
-                config,
-                id,
-                x,
-                y
+        drawText(
+                drawContext,
+                String.format(
+                        "TPS*: %.1f",
+                        tpsEstimate
+                ),
+                config.tpsX,
+                config.tpsY
         );
     }
 
-    public static int getWidthForEditor(
-            HudId id) {
+    if (config.cpsDisplay) {
 
-        return getWidth(id);
+        drawText(
+                drawContext,
+                "CPS: " +
+                        clickTimes.size(),
+                config.cpsX,
+                config.cpsY
+        );
     }
 
-    public static int getHeightForEditor(
-            HudId id) {
+    if (config.comboCounter) {
 
-        return getHeight(id);
+        drawText(
+                drawContext,
+                "Combo: " +
+                        combo,
+                config.comboX,
+                config.comboY
+        );
     }
 
-    // ============================================================
-    // DRAGGING
-    // ============================================================
+    if (config.totemCounter) {
 
-    private static void beginDrag(
-            MinecraftClient client) {
+        renderCount(
+                drawContext,
+                client.player,
+                Items.TOTEM_OF_UNDYING,
+                "Totems",
+                config.totemX,
+                config.totemY
+        );
+    }
 
-        int mouseX =
-                getMouseGuiX(client);
+    if (config.potionEffects) {
 
-        int mouseY =
-                getMouseGuiY(client);
+        renderEffects(
+                drawContext,
+                client.player,
+                config.effectsX,
+                config.effectsY
+        );
+    }
 
-        /*
-         * Search backwards so elements later in the
-         * enum are considered to be on top.
-         */
-        HudId[] ids =
-                HudId.values();
+    if (config.potionCounter) {
 
-        for (int i = ids.length - 1;
-                i >= 0;
-                i--) {
+        renderPotionCount(
+                drawContext,
+                client.player,
+                config.potionX,
+                config.potionY
+        );
+    }
 
-            HudId id =
-                    ids[i];
+    if (config.gappleCounter) {
+
+        renderGappleCount(
+                drawContext,
+                client.player,
+                config.gappleX,
+                config.gappleY
+        );
+    }
+
+    if (config.armorWarning) {
+
+        renderArmorWarning(
+                client,
+                drawContext,
+                config.warningX,
+                config.warningY
+        );
+    }
+
+    if (config.enemyHealth) {
+
+        renderEnemyHealth(
+                client,
+                drawContext,
+                config.enemyHealthX,
+                config.enemyHealthY
+        );
+    }
+
+    if (config.cooldown) {
+
+        renderCooldown(
+                client,
+                drawContext,
+                config.cooldownX,
+                config.cooldownY
+        );
+    }
+
+    // --------------------------------------------------------
+    // EDIT MODE OVERLAY
+    // --------------------------------------------------------
+
+    if (editMode) {
+
+        int screenWidth =
+                client.getWindow()
+                        .getScaledWidth();
+
+        drawContext.fill(
+                0,
+                0,
+                screenWidth,
+                22,
+                0x77000000
+        );
+
+        drawContext.drawText(
+                client.textRenderer,
+                Text.literal(
+                        "TOPU HUD EDIT MODE - RIGHT CTRL TO EXIT"
+                ),
+                8,
+                5,
+                0x00FF88,
+                true
+        );
+
+        for (Id id :
+                Id.values()) {
 
             if (!isEnabled(id)) {
                 continue;
@@ -779,844 +1028,549 @@ public final class HudManager {
 
             int[] position =
                     getPosition(
-                            ConfigManager.get(),
+                            config,
                             id
                     );
 
-            int width =
-                    getWidth(id);
+            int borderColor =
+                    draggingHud == id
+                            ? 0xFF00FF88
+                            : 0x66777777;
 
-            int height =
-                    getHeight(id);
-
-            if (mouseX >= position[0] &&
-                    mouseX <= position[0] + width &&
-                    mouseY >= position[1] &&
-                    mouseY <= position[1] + height) {
-
-                draggingHud =
-                        id;
-
-                dragOffsetX =
-                        mouseX -
-                        position[0];
-
-                dragOffsetY =
-                        mouseY -
-                        position[1];
-
-                return;
-            }
+            drawContext.drawBorder(
+                    position[0] - 2,
+                    position[1] - 2,
+                    getWidth(id) + 4,
+                    getHeight(id) + 4,
+                    borderColor
+            );
         }
     }
+}
 
-    private static void updateDrag(
-            MinecraftClient client) {
+// ============================================================
+// ARMOR HUD
+// ============================================================
 
-        if (draggingHud == null) {
-            return;
+private static void renderArmor(
+        MinecraftClient client,
+        DrawContext drawContext,
+        int x,
+        int y) {
+
+    for (int i = 0; i < 4; i++) {
+
+        ItemStack stack =
+                client.player
+                        .getInventory()
+                        .getArmorStack(i);
+
+        if (stack.isEmpty()) {
+            continue;
         }
 
-        int mouseX =
-                getMouseGuiX(client);
+        int slotX =
+                x +
+                (3 - i) * 28;
 
-        int mouseY =
-                getMouseGuiY(client);
-
-        int width =
-                getWidth(draggingHud);
-
-        int height =
-                getHeight(draggingHud);
-
-        int screenWidth =
-                client.getWindow()
-                        .getScaledWidth();
-
-        int screenHeight =
-                client.getWindow()
-                        .getScaledHeight();
-
-        int newX =
-                mouseX -
-                dragOffsetX;
-
-        int newY =
-                mouseY -
-                dragOffsetY;
-
-        /*
-         * Keep the HUD completely inside the screen.
-         */
-        newX =
-                Math.max(
-                        0,
-                        Math.min(
-                                newX,
-                                Math.max(
-                                        0,
-                                        screenWidth -
-                                        width
-                                )
-                        )
-                );
-
-        newY =
-                Math.max(
-                        0,
-                        Math.min(
-                                newY,
-                                Math.max(
-                                        0,
-                                        screenHeight -
-                                        height
-                                )
-                        )
-                );
-
-        setPosition(
-                ConfigManager.get(),
-                draggingHud,
-                newX,
-                newY
+        drawContext.drawItem(
+                stack,
+                slotX,
+                y
         );
+
+        if (stack.isDamageable()) {
+
+            int remaining =
+                    stack.getMaxDamage() -
+                    stack.getDamage();
+
+            double percent =
+                    100.0 *
+                    remaining /
+                    stack.getMaxDamage();
+
+            int color;
+
+            if (percent <= 40.0) {
+
+                color =
+                        0xFF4444;
+
+            } else if (percent <= 70.0) {
+
+                color =
+                        0xFFD23F;
+
+            } else {
+
+                color =
+                        0x55FF55;
+            }
+
+            drawContext.drawText(
+                    client.textRenderer,
+                    Text.literal(
+                            String.valueOf(
+                                    remaining
+                            )
+                    ),
+                    slotX + 16,
+                    y + 17,
+                    color,
+                    true
+            );
+        }
+    }
+}
+
+// ============================================================
+// PING
+// ============================================================
+
+private static void renderPing(
+        MinecraftClient client,
+        DrawContext drawContext,
+        int x,
+        int y) {
+
+    int ping =
+            -1;
+
+    if (client.getNetworkHandler() != null) {
+
+        var entry =
+                client.getNetworkHandler()
+                        .getPlayerListEntry(
+                                client.player.getUuid()
+                        );
+
+        if (entry != null) {
+
+            ping =
+                    entry.getLatency();
+        }
     }
 
-    // ============================================================
-    // HUD RENDER
-    // ============================================================
+    drawText(
+            drawContext,
+            "Ping: " +
+                    (ping < 0
+                            ? "-"
+                            : ping + " ms"),
+            x,
+            y
+    );
+}
 
-    private static void render(
-            MinecraftClient client,
-            DrawContext drawContext,
-            float tickDelta) {
+// ============================================================
+// ITEM COUNTERS
+// ============================================================
 
-        if (client.player == null ||
-                client.world == null) {
+private static void renderCount(
+        DrawContext drawContext,
+        PlayerEntity player,
+        Item item,
+        String label,
+        int x,
+        int y) {
 
-            return;
+    int count =
+            0;
+
+    for (ItemStack stack :
+            player.getInventory().main) {
+
+        if (stack.isOf(item)) {
+
+            count +=
+                    stack.getCount();
+        }
+    }
+
+    for (ItemStack stack :
+            player.getInventory().offHand) {
+
+        if (stack.isOf(item)) {
+
+            count +=
+                    stack.getCount();
+        }
+    }
+
+    drawText(
+            drawContext,
+            label +
+                    ": " +
+                    count,
+            x,
+            y
+    );
+}
+
+private static void renderPotionCount(
+        DrawContext drawContext,
+        PlayerEntity player,
+        int x,
+        int y) {
+
+    int count =
+            0;
+
+    for (ItemStack stack :
+            player.getInventory().main) {
+
+        if (stack.isOf(Items.POTION) ||
+                stack.isOf(Items.SPLASH_POTION) ||
+                stack.isOf(Items.LINGERING_POTION)) {
+
+            count +=
+                    stack.getCount();
+        }
+    }
+
+    drawText(
+            drawContext,
+            "Potions: " +
+                    count,
+            x,
+            y
+    );
+}
+
+private static void renderGappleCount(
+        DrawContext drawContext,
+        PlayerEntity player,
+        int x,
+        int y) {
+
+    int count =
+            0;
+
+    for (ItemStack stack :
+            player.getInventory().main) {
+
+        if (stack.isOf(
+                        Items.GOLDEN_APPLE) ||
+                stack.isOf(
+                        Items.ENCHANTED_GOLDEN_APPLE)) {
+
+            count +=
+                    stack.getCount();
+        }
+    }
+
+    for (ItemStack stack :
+            player.getInventory().offHand) {
+
+        if (stack.isOf(
+                        Items.GOLDEN_APPLE) ||
+                stack.isOf(
+                        Items.ENCHANTED_GOLDEN_APPLE)) {
+
+            count +=
+                    stack.getCount();
+        }
+    }
+
+    drawText(
+            drawContext,
+            "Gapples: " +
+                    count,
+            x,
+            y
+    );
+}
+
+// ============================================================
+// POTION EFFECTS
+// ============================================================
+
+private static void renderEffects(
+        DrawContext drawContext,
+        PlayerEntity player,
+        int x,
+        int y) {
+
+    int currentY =
+            y;
+
+    int shown =
+            0;
+
+    for (StatusEffectInstance effect :
+            player.getStatusEffects()) {
+
+        String name =
+                effect.getEffectType()
+                        .value()
+                        .getName()
+                        .getString();
+
+        int seconds =
+                Math.max(
+                        0,
+                        effect.getDuration() /
+                                20
+                );
+
+        drawText(
+                drawContext,
+                name +
+                        " " +
+                        seconds +
+                        "s",
+                x,
+                currentY
+        );
+
+        currentY +=
+                12;
+
+        shown++;
+
+        if (shown >= 6) {
+            break;
+        }
+    }
+}
+
+// ============================================================
+// ARMOR WARNING
+// ============================================================
+
+private static void renderArmorWarning(
+        MinecraftClient client,
+        DrawContext drawContext,
+        int x,
+        int y) {
+
+    for (int i = 0; i < 4; i++) {
+
+        ItemStack stack =
+                client.player
+                        .getInventory()
+                        .getArmorStack(i);
+
+        if (!stack.isDamageable()) {
+            continue;
         }
 
-        TopuHudConfig config =
-                ConfigManager.get();
+        double percent =
+                100.0 *
+                (stack.getMaxDamage() -
+                        stack.getDamage()) /
+                stack.getMaxDamage();
 
-        if (config.armorHud) {
-
-            renderArmor(
-                    client,
-                    drawContext,
-                    config.armorX,
-                    config.armorY
-            );
-        }
-
-        if (config.fpsCounter) {
-
-            drawText(
-                    drawContext,
-                    "FPS: " +
-                            client.getCurrentFps(),
-                    config.fpsX,
-                    config.fpsY
-            );
-        }
-
-        if (config.pingDisplay) {
-
-            renderPing(
-                    client,
-                    drawContext,
-                    config.pingX,
-                    config.pingY
-            );
-        }
-
-        if (config.tpsDisplay) {
-
-            drawText(
-                    drawContext,
-                    String.format(
-                            "TPS*: %.1f",
-                            tpsEstimate
-                    ),
-                    config.tpsX,
-                    config.tpsY
-            );
-        }
-
-        if (config.cpsDisplay) {
-
-            drawText(
-                    drawContext,
-                    "CPS: " +
-                            clickTimes.size(),
-                    config.cpsX,
-                    config.cpsY
-            );
-        }
-
-        if (config.comboCounter) {
-
-            drawText(
-                    drawContext,
-                    "Combo: " +
-                            combo,
-                    config.comboX,
-                    config.comboY
-            );
-        }
-
-        if (config.totemCounter) {
-
-            renderCount(
-                    drawContext,
-                    client.player,
-                    Items.TOTEM_OF_UNDYING,
-                    "Totems",
-                    config.totemX,
-                    config.totemY
-            );
-        }
-
-        if (config.potionEffects) {
-
-            renderEffects(
-                    drawContext,
-                    client.player,
-                    config.effectsX,
-                    config.effectsY
-            );
-        }
-
-        if (config.potionCounter) {
-
-            renderPotionCount(
-                    drawContext,
-                    client.player,
-                    config.potionX,
-                    config.potionY
-            );
-        }
-
-        if (config.gappleCounter) {
-
-            renderGappleCount(
-                    drawContext,
-                    client.player,
-                    config.gappleX,
-                    config.gappleY
-            );
-        }
-
-        if (config.armorWarning) {
-
-            renderArmorWarning(
-                    client,
-                    drawContext,
-                    config.warningX,
-                    config.warningY
-            );
-        }
-
-        if (config.enemyHealth) {
-
-            renderEnemyHealth(
-                    client,
-                    drawContext,
-                    config.enemyHealthX,
-                    config.enemyHealthY
-            );
-        }
-
-        if (config.cooldown) {
-
-            renderCooldown(
-                    client,
-                    drawContext,
-                    config.cooldownX,
-                    config.cooldownY
-            );
-        }
-
-        // --------------------------------------------------------
-        // EDIT MODE
-        // --------------------------------------------------------
-
-        if (editMode) {
-
-            int screenWidth =
-                    client.getWindow()
-                            .getScaledWidth();
+        if (percent <= 40.0) {
 
             drawContext.fill(
-                    0,
-                    0,
-                    screenWidth,
-                    22,
-                    0x77000000
+                    x - 4,
+                    y - 4,
+                    x + 176,
+                    y + 19,
+                    0xAA550000
             );
 
             drawContext.drawText(
                     client.textRenderer,
                     Text.literal(
-                            "TOPU HUD EDIT MODE — RIGHT CTRL TO EXIT"
+                            "ARMOR LOW  " +
+                                    Math.round(
+                                            percent
+                                    ) +
+                                    "%"
                     ),
-                    8,
-                    5,
-                    0x00FF88,
+                    x,
+                    y,
+                    0xFF5555,
                     true
             );
 
-            for (HudId id :
-                    HudId.values()) {
-
-                if (!isEnabled(id)) {
-                    continue;
-                }
-
-                int[] position =
-                        getPosition(
-                                config,
-                                id
-                        );
-
-                int borderColor =
-                        draggingHud == id
-                                ? 0xFF00FF88
-                                : 0x66777777;
-
-                drawContext.drawBorder(
-                        position[0] - 2,
-                        position[1] - 2,
-                        getWidth(id) + 4,
-                        getHeight(id) + 4,
-                        borderColor
-                );
-            }
+            return;
         }
     }
+}
 
-    // ============================================================
-    // ARMOR HUD
-    // ============================================================
+// ============================================================
+// ENEMY HEALTH
+// ============================================================
 
-    private static void renderArmor(
-            MinecraftClient client,
-            DrawContext drawContext,
-            int x,
-            int y) {
+private static void renderEnemyHealth(
+        MinecraftClient client,
+        DrawContext drawContext,
+        int x,
+        int y) {
 
-        for (int i = 0; i < 4; i++) {
+    if (!(client.crosshairTarget
+            instanceof EntityHitResult hit)) {
 
-            ItemStack stack =
-                    client.player
-                            .getInventory()
-                            .getArmorStack(i);
+        return;
+    }
 
-            if (stack.isEmpty()) {
-                continue;
-            }
+    Entity entity =
+            hit.getEntity();
 
-            int slotX =
-                    x +
-                    (3 - i) * 28;
+    if (!(entity
+            instanceof LivingEntity living)) {
 
-            drawContext.drawItem(
-                    stack,
-                    slotX,
-                    y
+        return;
+    }
+
+    float maxHealth =
+            Math.max(
+                    1.0f,
+                    living.getMaxHealth()
             );
 
-            if (stack.isDamageable()) {
+    float health =
+            Math.max(
+                    0.0f,
+                    living.getHealth()
+            );
 
-                int remaining =
-                        stack.getMaxDamage() -
-                        stack.getDamage();
+    float ratio =
+            MathHelper.clamp(
+                    health /
+                            maxHealth,
+                    0.0f,
+                    1.0f
+            );
 
-                double percent =
-                        100.0 *
-                        remaining /
-                        stack.getMaxDamage();
+    int color;
 
-                int color;
+    if (ratio <= 0.30f) {
 
-                if (percent <= 40.0) {
+        color =
+                0xFF4444;
 
-                    color =
-                            0xFF4444;
+    } else if (ratio <= 0.60f) {
 
-                } else if (percent <= 70.0) {
+        color =
+                0xFFFF55;
 
-                    color =
-                            0xFFD23F;
+    } else {
 
-                } else {
-
-                    color =
-                            0x55FF55;
-                }
-
-                drawContext.drawText(
-                        client.textRenderer,
-                        Text.literal(
-                                String.valueOf(
-                                        remaining
-                                )
-                        ),
-                        slotX + 16,
-                        y + 17,
-                        color,
-                        true
-                );
-            }
-        }
+        color =
+                0x55FF55;
     }
 
-    // ============================================================
-    // PING
-    // ============================================================
+    drawContext.fill(
+            x - 3,
+            y - 3,
+            x + 165,
+            y + 22,
+            0xAA111111
+    );
 
-    private static void renderPing(
-            MinecraftClient client,
-            DrawContext drawContext,
-            int x,
-            int y) {
+    drawContext.drawText(
+            client.textRenderer,
+            Text.literal(
+                    String.format(
+                            "Enemy HP %.1f / %.1f",
+                            health,
+                            maxHealth
+                    )
+            ),
+            x,
+            y,
+            0xFFFFFF,
+            true
+    );
 
-        int ping =
-                -1;
+    drawContext.fill(
+            x,
+            y + 14,
+            x +
+                    (int)
+                            (155 *
+                                    ratio),
+            y + 18,
+            color
+    );
+}
 
-        if (client.getNetworkHandler() != null) {
+// ============================================================
+// ATTACK COOLDOWN
+// ============================================================
 
-            var entry =
-                    client.getNetworkHandler()
-                            .getPlayerListEntry(
-                                    client.player.getUuid()
-                            );
+private static void renderCooldown(
+        MinecraftClient client,
+        DrawContext drawContext,
+        int x,
+        int y) {
 
-            if (entry != null) {
-
-                ping =
-                        entry.getLatency();
-            }
-        }
-
-        drawText(
-                drawContext,
-                "Ping: " +
-                        (ping < 0
-                                ? "—"
-                                : ping + " ms"),
-                x,
-                y
-        );
-    }
-
-    // ============================================================
-    // ITEM COUNTERS
-    // ============================================================
-
-    private static void renderCount(
-            DrawContext drawContext,
-            PlayerEntity player,
-            Item item,
-            String label,
-            int x,
-            int y) {
-
-        int count =
-                0;
-
-        for (ItemStack stack :
-                player.getInventory().main) {
-
-            if (stack.isOf(item)) {
-
-                count +=
-                        stack.getCount();
-            }
-        }
-
-        for (ItemStack stack :
-                player.getInventory().offHand) {
-
-            if (stack.isOf(item)) {
-
-                count +=
-                        stack.getCount();
-            }
-        }
-
-        drawText(
-                drawContext,
-                label +
-                        ": " +
-                        count,
-                x,
-                y
-        );
-    }
-
-    private static void renderPotionCount(
-            DrawContext drawContext,
-            PlayerEntity player,
-            int x,
-            int y) {
-
-        int count =
-                0;
-
-        for (ItemStack stack :
-                player.getInventory().main) {
-
-            if (stack.isOf(Items.POTION) ||
-                    stack.isOf(Items.SPLASH_POTION) ||
-                    stack.isOf(Items.LINGERING_POTION)) {
-
-                count +=
-                        stack.getCount();
-            }
-        }
-
-        drawText(
-                drawContext,
-                "Potions: " +
-                        count,
-                x,
-                y
-        );
-    }
-
-    private static void renderGappleCount(
-            DrawContext drawContext,
-            PlayerEntity player,
-            int x,
-            int y) {
-
-        int count =
-                0;
-
-        for (ItemStack stack :
-                player.getInventory().main) {
-
-            if (stack.isOf(
-                            Items.GOLDEN_APPLE) ||
-                    stack.isOf(
-                            Items.ENCHANTED_GOLDEN_APPLE)) {
-
-                count +=
-                        stack.getCount();
-            }
-        }
-
-        for (ItemStack stack :
-                player.getInventory().offHand) {
-
-            if (stack.isOf(
-                            Items.GOLDEN_APPLE) ||
-                    stack.isOf(
-                            Items.ENCHANTED_GOLDEN_APPLE)) {
-
-                count +=
-                        stack.getCount();
-            }
-        }
-
-        drawText(
-                drawContext,
-                "Gapples: " +
-                        count,
-                x,
-                y
-        );
-    }
-
-    // ============================================================
-    // POTION EFFECTS
-    // ============================================================
-
-    private static void renderEffects(
-            DrawContext drawContext,
-            PlayerEntity player,
-            int x,
-            int y) {
-
-        int currentY =
-                y;
-
-        int shown =
-                0;
-
-        for (StatusEffectInstance effect :
-                player.getStatusEffects()) {
-
-            String name =
-                    effect.getEffectType()
-                            .value()
-                            .getName()
-                            .getString();
-
-            int seconds =
-                    Math.max(
-                            0,
-                            effect.getDuration() /
-                                    20
+    float cooldown =
+            client.player
+                    .getAttackCooldownProgress(
+                            0.0f
                     );
 
-            drawText(
-                    drawContext,
-                    name +
-                            " " +
-                            seconds +
-                            "s",
-                    x,
-                    currentY
+    int width =
+            120;
+
+    drawContext.fill(
+            x,
+            y,
+            x + width,
+            y + 8,
+            0xAA222222
+    );
+
+    int fillWidth =
+            Math.round(
+                    width *
+                            cooldown
             );
 
-            currentY +=
-                    12;
+    int color =
+            cooldown >= 0.99f
+                    ? 0xFF55FF55
+                    : 0xFFFFAA33;
 
-            shown++;
+    drawContext.fill(
+            x,
+            y,
+            x + fillWidth,
+            y + 8,
+            color
+    );
 
-            if (shown >= 6) {
-                break;
-            }
-        }
-    }
+    drawText(
+            drawContext,
+            "Attack: " +
+                    Math.round(
+                            cooldown *
+                                    100
+                    ) +
+                    "%",
+            x,
+            y + 10
+    );
+}
 
-    // ============================================================
-    // ARMOR WARNING
-    // ============================================================
+// ============================================================
+// TEXT
+// ============================================================
 
-    private static void renderArmorWarning(
-            MinecraftClient client,
-            DrawContext drawContext,
-            int x,
-            int y) {
+private static void drawText(
+        DrawContext drawContext,
+        String text,
+        int x,
+        int y) {
 
-        for (int i = 0; i < 4; i++) {
+    MinecraftClient client =
+            MinecraftClient.getInstance();
 
-            ItemStack stack =
-                    client.player
-                            .getInventory()
-                            .getArmorStack(i);
+    drawContext.drawText(
+            client.textRenderer,
+            Text.literal(text),
+            x,
+            y,
+            0xFFFFFF,
+            true
+    );
+}
 
-            if (!stack.isDamageable()) {
-                continue;
-            }
 
-            double percent =
-                    100.0 *
-                    (stack.getMaxDamage() -
-                            stack.getDamage()) /
-                    stack.getMaxDamage();
-
-            if (percent <= 40.0) {
-
-                drawContext.fill(
-                        x - 4,
-                        y - 4,
-                        x + 176,
-                        y + 19,
-                        0xAA550000
-                );
-
-                drawContext.drawText(
-                        client.textRenderer,
-                        Text.literal(
-                                "ARMOR LOW  " +
-                                        Math.round(
-                                                percent
-                                        ) +
-                                        "%"
-                        ),
-                        x,
-                        y,
-                        0xFF5555,
-                        true
-                );
-
-                return;
-            }
-        }
-    }
-
-    // ============================================================
-    // ENEMY HEALTH
-    // ============================================================
-
-    private static void renderEnemyHealth(
-            MinecraftClient client,
-            DrawContext drawContext,
-            int x,
-            int y) {
-
-        if (!(client.crosshairTarget
-                instanceof EntityHitResult hit)) {
-
-            return;
-        }
-
-        Entity entity =
-                hit.getEntity();
-
-        if (!(entity
-                instanceof LivingEntity living)) {
-
-            return;
-        }
-
-        float maxHealth =
-                Math.max(
-                        1.0f,
-                        living.getMaxHealth()
-                );
-
-        float health =
-                Math.max(
-                        0.0f,
-                        living.getHealth()
-                );
-
-        float ratio =
-                MathHelper.clamp(
-                        health /
-                                maxHealth,
-                        0.0f,
-                        1.0f
-                );
-
-        int color;
-
-        if (ratio <= 0.30f) {
-
-            color =
-                    0xFF4444;
-
-        } else if (ratio <= 0.60f) {
-
-            color =
-                    0xFFFF55;
-
-        } else {
-
-            color =
-                    0x55FF55;
-        }
-
-        drawContext.fill(
-                x - 3,
-                y - 3,
-                x + 165,
-                y + 22,
-                0xAA111111
-        );
-
-        drawContext.drawText(
-                client.textRenderer,
-                Text.literal(
-                        String.format(
-                                "Enemy HP %.1f / %.1f",
-                                health,
-                                maxHealth
-                        )
-                ),
-                x,
-                y,
-                0xFFFFFF,
-                true
-        );
-
-        drawContext.fill(
-                x,
-                y + 14,
-                x +
-                        (int)
-                                (155 *
-                                        ratio),
-                y + 18,
-                color
-        );
-    }
-
-    // ============================================================
-    // ATTACK COOLDOWN
-    // ============================================================
-
-    private static void renderCooldown(
-            MinecraftClient client,
-            DrawContext drawContext,
-            int x,
-            int y) {
-
-        float cooldown =
-                client.player
-                        .getAttackCooldownProgress(
-                                0.0f
-                        );
-
-        int width =
-                120;
-
-        drawContext.fill(
-                x,
-                y,
-                x + width,
-                y + 8,
-                0xAA222222
-        );
-
-        int fillWidth =
-                Math.round(
-                        width *
-                                cooldown
-                );
-
-        int color =
-                cooldown >= 0.99f
-                        ? 0xFF55FF55
-                        : 0xFFFFAA33;
-
-        drawContext.fill(
-                x,
-                y,
-                x + fillWidth,
-                y + 8,
-                color
-        );
-
-        drawText(
-                drawContext,
-                "Attack: " +
-                        Math.round(
-                                cooldown *
-                                        100
-                        ) +
-                        "%",
-                x,
-                y + 10
-        );
-    }
-
-    // ============================================================
-    // TEXT
-    // ============================================================
-
-    private static void drawText(
-            DrawContext drawContext,
-            String text,
-            int x,
-            int y) {
-
-        MinecraftClient client =
-                MinecraftClient.getInstance();
-
-        drawContext.drawText(
-                client.textRenderer,
-                Text.literal(text),
-                x,
-                y,
-                0xFFFFFF,
-                true
-        );
-    }
 }
