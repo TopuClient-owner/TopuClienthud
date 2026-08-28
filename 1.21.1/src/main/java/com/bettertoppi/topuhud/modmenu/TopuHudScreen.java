@@ -1,3 +1,4 @@
+
 package com.bettertoppi.topuhud.modmenu;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
@@ -13,15 +14,14 @@ import net.minecraft.text.Text;
 public final class TopuScreenEditor extends Screen {
 
     private final Screen parent;
-
     private final TopuHudConfig config;
 
-    private HudManager.Id dragging;
+    private HudManager.Id dragging = null;
 
     private int dragOffsetX;
     private int dragOffsetY;
 
-    private boolean draggingMouse;
+    private boolean mouseHeld = false;
 
     public TopuScreenEditor(Screen parent) {
         super(Text.literal("Topu HUD Editor"));
@@ -29,6 +29,10 @@ public final class TopuScreenEditor extends Screen {
         this.parent = parent;
         this.config = ConfigManager.get();
     }
+
+    // ============================================================
+    // INIT
+    // ============================================================
 
     @Override
     protected void init() {
@@ -48,10 +52,14 @@ public final class TopuScreenEditor extends Screen {
         );
     }
 
+    // ============================================================
+    // CLOSE
+    // ============================================================
+
     private void closeEditor() {
 
         dragging = null;
-        draggingMouse = false;
+        mouseHeld = false;
 
         ConfigManager.save();
 
@@ -65,7 +73,7 @@ public final class TopuScreenEditor extends Screen {
     }
 
     // ============================================================
-    // MOUSE
+    // MOUSE CLICK
     // ============================================================
 
     @Override
@@ -83,13 +91,13 @@ public final class TopuScreenEditor extends Screen {
             );
         }
 
+        /*
+         * Search backwards so HUD elements later in the enum
+         * have priority when elements overlap.
+         */
         HudManager.Id[] ids =
                 HudManager.Id.values();
 
-        /*
-         * Iterate backwards so the last HUD element
-         * is treated as being on top.
-         */
         for (int i = ids.length - 1; i >= 0; i--) {
 
             HudManager.Id id = ids[i];
@@ -123,23 +131,25 @@ public final class TopuScreenEditor extends Screen {
                 dragOffsetY =
                         (int) mouseY - position[1];
 
-                draggingMouse = true;
+                mouseHeld = true;
 
-                /*
-                 * Returning true prevents Minecraft's
-                 * normal screen handling from processing
-                 * this click.
-                 */
                 return true;
             }
         }
 
+        /*
+         * No HUD element was clicked.
+         */
         return super.mouseClicked(
                 mouseX,
                 mouseY,
                 button
         );
     }
+
+    // ============================================================
+    // MOUSE DRAG
+    // ============================================================
 
     @Override
     public boolean mouseDragged(
@@ -154,21 +164,10 @@ public final class TopuScreenEditor extends Screen {
             return false;
         }
 
-        if (dragging == null) {
+        if (dragging == null || !mouseHeld) {
             return false;
         }
 
-        int newX =
-                (int) mouseX -
-                        dragOffsetX;
-
-        int newY =
-                (int) mouseY -
-                        dragOffsetY;
-
-        /*
-         * Keep the HUD inside the screen.
-         */
         int width =
                 HudManager.getWidthForEditor(
                         dragging
@@ -179,11 +178,25 @@ public final class TopuScreenEditor extends Screen {
                         dragging
                 );
 
+        int newX =
+                (int) mouseX -
+                        dragOffsetX;
+
+        int newY =
+                (int) mouseY -
+                        dragOffsetY;
+
+        /*
+         * Keep the module completely inside the editor.
+         */
         newX = Math.max(
                 0,
                 Math.min(
                         newX,
-                        this.width - width
+                        Math.max(
+                                0,
+                                this.width - width
+                        )
                 )
         );
 
@@ -191,7 +204,10 @@ public final class TopuScreenEditor extends Screen {
                 0,
                 Math.min(
                         newY,
-                        this.height - height
+                        Math.max(
+                                0,
+                                this.height - height
+                        )
                 )
         );
 
@@ -202,10 +218,12 @@ public final class TopuScreenEditor extends Screen {
                 newY
         );
 
-        draggingMouse = true;
-
         return true;
     }
+
+    // ============================================================
+    // MOUSE RELEASE
+    // ============================================================
 
     @Override
     public boolean mouseReleased(
@@ -214,10 +232,10 @@ public final class TopuScreenEditor extends Screen {
             int button
     ) {
 
-        if (button == 0 && dragging != null) {
+        if (button == 0 && mouseHeld) {
 
+            mouseHeld = false;
             dragging = null;
-            draggingMouse = false;
 
             ConfigManager.save();
 
@@ -243,15 +261,18 @@ public final class TopuScreenEditor extends Screen {
             float delta
     ) {
 
+        MinecraftClient mc =
+                MinecraftClient.getInstance();
+
         /*
-         * Dark editor background.
+         * Editor background.
          */
         drawContext.fill(
                 0,
                 0,
                 this.width,
                 this.height,
-                0xAA101010
+                0xCC101010
         );
 
         /*
@@ -280,16 +301,16 @@ public final class TopuScreenEditor extends Screen {
         drawContext.drawText(
                 this.textRenderer,
                 Text.literal(
-                        "Drag HUD elements • Release mouse to place"
+                        "Drag HUD elements to move them"
                 ),
                 10,
-                36,
+                38,
                 0xAAAAAA,
                 false
         );
 
         /*
-         * Draw HUD editor boxes.
+         * Draw editor modules.
          */
         for (HudManager.Id id :
                 HudManager.Id.values()) {
@@ -313,13 +334,8 @@ public final class TopuScreenEditor extends Screen {
             boolean selected =
                     dragging == id;
 
-            int borderColor =
-                    selected
-                            ? 0xFF00FF88
-                            : 0xFF777777;
-
             /*
-             * Background.
+             * Module background.
              */
             drawContext.fill(
                     position[0],
@@ -327,12 +343,12 @@ public final class TopuScreenEditor extends Screen {
                     position[0] + width,
                     position[1] + height,
                     selected
-                            ? 0x5533AA77
+                            ? 0x6633AA77
                             : 0x55222222
             );
 
             /*
-             * Border.
+             * Module border.
              */
             drawBorder(
                     drawContext,
@@ -340,7 +356,9 @@ public final class TopuScreenEditor extends Screen {
                     position[1],
                     width,
                     height,
-                    borderColor
+                    selected
+                            ? 0xFF00FF88
+                            : 0xFF777777
             );
 
             /*
@@ -359,7 +377,7 @@ public final class TopuScreenEditor extends Screen {
         }
 
         /*
-         * Let Minecraft render the Done button.
+         * Render buttons last.
          */
         super.render(
                 drawContext,
@@ -416,7 +434,7 @@ public final class TopuScreenEditor extends Screen {
     }
 
     // ============================================================
-    // DISPLAY NAMES
+    // DISPLAY NAME
     // ============================================================
 
     private Text getDisplayName(
