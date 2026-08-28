@@ -1,55 +1,90 @@
-private Text getDisplayName(
-        HudManager.HudId id
-) {
+package com.bettertoppi.topuhud.config;
 
-    return switch (id) {
+public class TopuHudConfig {
 
-        case ARMOR ->
-                Text.literal("Armor");
+    // ============================================================
+    // HUD ENABLE / DISABLE
+    // ============================================================
 
-        case FPS ->
-                Text.literal("FPS");
+    public boolean armorHud = true;
+    public boolean fpsCounter = true;
+    public boolean pingDisplay = true;
+    public boolean tpsDisplay = false;
+    public boolean cpsDisplay = true;
+    public boolean comboCounter = true;
+    public boolean totemCounter = true;
+    public boolean potionCounter = true;
+    public boolean potionEffects = true;
+    public boolean gappleCounter = true;
+    public boolean armorWarning = true;
+    public boolean enemyHealth = true;
+    public boolean cooldown = true;
 
-        case PING ->
-                Text.literal("Ping");
+    public boolean blockOverlay = true;
+    public boolean keystrokes = true;
+    public boolean memory = true;
 
-        case TPS ->
-                Text.literal("TPS");
+    // ============================================================
+    // CLIENT FEATURES
+    // ============================================================
 
-        case CPS ->
-                Text.literal("CPS");
+    public boolean toggleSneak = false;
+    public boolean autoSprint = false;
+    public boolean editMode = false;
 
-        case COMBO ->
-                Text.literal("Combo");
+    // ============================================================
+    // HUD POSITIONS
+    // ============================================================
 
-        case TOTEM ->
-                Text.literal("Totems");
+    public int armorX = 10;
+    public int armorY = 30;
 
-        case POTION ->
-                Text.literal("Potions");
+    public int fpsX = 10;
+    public int fpsY = 65;
 
-        case EFFECTS ->
-                Text.literal("Effects");
+    public int pingX = 10;
+    public int pingY = 87;
 
-        case GAPPLE ->
-                Text.literal("Gapples");
+    public int tpsX = 10;
+    public int tpsY = 109;
 
-        case WARNING ->
-                Text.literal("Armor Warning");
+    public int cpsX = 10;
+    public int cpsY = 131;
 
-        case ENEMY ->
-                Text.literal("Enemy HP");
+    public int comboX = 10;
+    public int comboY = 153;
 
-        case COOLDOWN ->
-                Text.literal("Attack Cooldown");
+    public int totemX = 10;
+    public int totemY = 175;
 
-        case BLOCK_OVERLAY ->
-                Text.literal("Block Overlay");
+    public int potionX = 10;
+    public int potionY = 197;
 
-        case KEYSTROKES ->
-                Text.literal("Keystrokes");
+    public int effectsX = 10;
+    public int effectsY = 219;
 
-        case MEMORY ->
-                Text.literal("Memory");
-    };
+    public int gappleX = 10;
+    public int gappleY = 301;
+
+    public int warningX = 10;
+    public int warningY = 323;
+
+    public int enemyHealthX = 10;
+    public int enemyHealthY = 345;
+
+    public int cooldownX = 10;
+    public int cooldownY = 370;
+
+    // ============================================================
+    // EXTRA HUD POSITIONS
+    // ============================================================
+
+    public int blockOverlayX = 10;
+    public int blockOverlayY = 400;
+
+    public int keystrokesX = 10;
+    public int keystrokesY = 450;
+
+    public int memoryX = 10;
+    public int memoryY = 520;
 }
