@@ -1,159 +1,108 @@
 package com.bettertoppi.topuhud.config;
 
-public final class TopuHudConfig {
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
-// ============================================================
-// EXISTING HUD MODULES
-// ============================================================
+import net.fabricmc.loader.api.FabricLoader;
 
-public boolean armorHud = true;
-public boolean fpsCounter = true;
-public boolean pingDisplay = true;
-public boolean tpsDisplay = true;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-public boolean cpsDisplay = true;
-public boolean comboCounter = true;
-public boolean totemCounter = true;
-public boolean potionEffects = true;
+public final class ConfigManager {
 
-public boolean potionCounter = true;
-public boolean gappleCounter = true;
+    private static final Gson GSON =
+            new GsonBuilder()
+                    .setPrettyPrinting()
+                    .create();
 
-public boolean armorWarning = true;
-public boolean enemyHealth = true;
-public boolean cooldown = true;
+    private static final TopuHudConfig CONFIG =
+            new TopuHudConfig();
 
-// ============================================================
-// NEW TOPUCLIENT FEATURES
-// ============================================================
+    private ConfigManager() {
+    }
 
-/*
- * Shows the block currently being looked at.
- */
-public boolean blockOverlay = true;
+    private static Path path() {
 
-/*
- * WASD + mouse button keystrokes HUD.
- */
-public boolean keystrokes = true;
+        return FabricLoader.getInstance()
+                .getConfigDir()
+                .resolve("topuhud.json");
+    }
 
-/*
- * JVM memory usage HUD.
- */
-public boolean memory = true;
+    public static TopuHudConfig get() {
 
-/*
- * Custom crosshair.
- */
-public boolean customCrosshair = true;
+        return CONFIG;
+    }
 
-// ============================================================
-// OTHER SETTINGS
-// ============================================================
+    public static void load() {
 
-public boolean autoSprint = true;
-public boolean toggleSneak = true;
-public boolean editMode = false;
+        try {
 
-// ============================================================
-// EXISTING HUD POSITIONS
-// ============================================================
+            Path p = path();
 
-public int armorX = 10;
-public int armorY = 10;
+            if (!Files.exists(p)) {
 
-public int fpsX = 10;
-public int fpsY = 70;
+                save();
+                return;
+            }
 
-public int pingX = 10;
-public int pingY = 86;
+            TopuHudConfig loaded =
+                    GSON.fromJson(
+                            Files.readString(p),
+                            TopuHudConfig.class
+                    );
 
-public int tpsX = 10;
-public int tpsY = 102;
+            if (loaded != null) {
 
-public int cpsX = 10;
-public int cpsY = 118;
+                copy(
+                        loaded,
+                        CONFIG
+                );
+            }
 
-public int comboX = 10;
-public int comboY = 134;
+        } catch (Exception ignored) {
+        }
+    }
 
-public int totemX = 10;
-public int totemY = 150;
+    public static void save() {
 
-public int potionX = 10;
-public int potionY = 166;
+        try {
 
-public int effectsX = 10;
-public int effectsY = 182;
+            Path p = path();
 
-public int gappleX = 10;
-public int gappleY = 214;
+            Files.createDirectories(
+                    p.getParent()
+            );
 
-public int warningX = 10;
-public int warningY = 232;
+            Files.writeString(
+                    p,
+                    GSON.toJson(CONFIG)
+            );
 
-public int enemyHealthX = 10;
-public int enemyHealthY = 250;
+        } catch (Exception ignored) {
+        }
+    }
 
-public int cooldownX = 10;
-public int cooldownY = 270;
+    private static void copy(
+            TopuHudConfig source,
+            TopuHudConfig target
+    ) {
 
-// ============================================================
-// NEW HUD POSITIONS
-// ============================================================
+        try {
 
-/*
- * Block Overlay
- */
-public int blockOverlayX = 10;
-public int blockOverlayY = 294;
+            for (var field :
+                    TopuHudConfig.class.getFields()) {
 
-/*
- * Keystrokes
- */
-public int keystrokesX = 10;
-public int keystrokesY = 330;
+                if (field.getType() == boolean.class ||
+                        field.getType() == int.class) {
 
-/*
- * Memory
- */
-public int memoryX = 10;
-public int memoryY = 410;
+                    field.set(
+                            target,
+                            field.get(source)
+                    );
+                }
+            }
 
-// ============================================================
-// CROSSHAIR SETTINGS
-// ============================================================
-
-/*
- * Crosshair style:
- *
- * 0 = Plus
- * 1 = Cross
- * 2 = Dot
- * 3 = T
- */
-public int crosshairStyle = 0;
-
-/*
- * Crosshair size in pixels.
- */
-public int crosshairSize = 7;
-
-/*
- * Crosshair line thickness.
- */
-public int crosshairThickness = 2;
-
-/*
- * Gap between the center and crosshair lines.
- */
-public int crosshairGap = 3;
-
-/*
- * ARGB color.
- *
- * Default = bright green.
- */
-public int crosshairColor = 0xFF00FF88;
-
+        } catch (Exception ignored) {
+        }
+    }
 }
