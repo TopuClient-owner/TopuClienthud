@@ -58,7 +58,7 @@ public final class HudManager {
     private static double tpsEstimate = 20.0;
     private static long lastTickNanos = System.nanoTime();
 
-    private enum HudId {
+    public enum HudId {
         ARMOR,
         FPS,
         PING,
