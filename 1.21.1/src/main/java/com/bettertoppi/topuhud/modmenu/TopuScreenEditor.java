@@ -11,8 +11,7 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public final class TopuScreenEditor extends Screen {
-
-```
+`
 private final Screen parent;
 private final TopuHudConfig config;
 
