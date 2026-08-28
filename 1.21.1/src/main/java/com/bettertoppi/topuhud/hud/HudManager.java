@@ -1,3 +1,4 @@
+
 package com.bettertoppi.topuhud.hud;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
@@ -99,6 +100,9 @@ public final class HudManager {
                         )
                 );
 
+        /*
+         * RIGHT CTRL = HUD EDIT MODE + MOUSE CURSOR
+         */
         editKey =
                 KeyBindingHelper.registerKeyBinding(
                         new KeyBinding(
@@ -124,11 +128,7 @@ public final class HudManager {
         );
 
         /*
-         * Fabric API 1.21.x HudRenderCallback signature:
-         *
-         * (DrawContext, RenderTickCounter)
-         *
-         * Therefore we adapt it to our internal render method.
+         * Fabric API 1.21.1 HUD callback.
          */
         HudRenderCallback.EVENT.register(
                 (drawContext, tickCounter) ->
@@ -160,8 +160,32 @@ public final class HudManager {
         ConfigManager.get().editMode =
                 value;
 
-        if (!value) {
+        MinecraftClient client =
+                MinecraftClient.getInstance();
+
+        /*
+         * RIGHT CTRL EDIT MODE BEHAVIOR
+         *
+         * Entering edit mode:
+         *      Unlock mouse cursor
+         *
+         * Leaving edit mode:
+         *      Lock mouse cursor again
+         */
+        if (value) {
+
+            if (client.currentScreen == null) {
+                client.mouse.unlockCursor();
+            }
+
+        } else {
+
             draggingHud = null;
+
+            if (client.currentScreen == null) {
+                client.mouse.lockCursor();
+            }
+
             ConfigManager.save();
         }
     }
@@ -190,6 +214,10 @@ public final class HudManager {
     private static void tick(
             MinecraftClient client) {
 
+        /*
+         * RIGHT SHIFT
+         * Open TopuHUD menu.
+         */
         if (menuKey != null) {
 
             while (menuKey.wasPressed()) {
@@ -203,6 +231,20 @@ public final class HudManager {
             }
         }
 
+        /*
+         * RIGHT CTRL
+         *
+         * Toggles HUD edit mode.
+         *
+         * ON:
+         *      Cursor is released.
+         *
+         * OFF:
+         *      Cursor is locked again.
+         *
+         * This means ESC is no longer required
+         * to take the cursor out while editing.
+         */
         if (editKey != null) {
 
             while (editKey.wasPressed()) {
@@ -213,6 +255,10 @@ public final class HudManager {
             }
         }
 
+        /*
+         * RIGHT ALT
+         * Toggle sneak.
+         */
         if (sneakKey != null) {
 
             while (sneakKey.wasPressed()) {
@@ -910,7 +956,7 @@ public final class HudManager {
             drawContext.drawText(
                     client.textRenderer,
                     Text.literal(
-                            "TOPU HUD EDIT MODE"
+                            "TOPU HUD EDIT MODE — RIGHT CTRL TO EXIT"
                     ),
                     8,
                     5,
@@ -1467,3 +1513,4 @@ public final class HudManager {
         );
     }
 }
+
