@@ -1,3 +1,4 @@
+
 package com.bettertoppi.topuhud.modmenu;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
@@ -462,6 +463,16 @@ public final class TopuScreenEditor extends Screen {
 
             case COOLDOWN ->
                     Text.literal("Attack Cooldown");
+
+            case BLOCK_OVERLAY ->
+                    Text.literal("Block Overlay");
+
+            case KEYSTROKES ->
+                    Text.literal("Keystrokes");
+
+            case MEMORY ->
+                    Text.literal("Memory");
         };
     }
 }
+
