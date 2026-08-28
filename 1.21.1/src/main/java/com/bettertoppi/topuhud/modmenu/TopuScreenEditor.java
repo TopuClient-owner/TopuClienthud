@@ -12,74 +12,125 @@ import net.minecraft.text.Text;
 
 public final class TopuScreenEditor extends Screen {
 
-private final Screen parent;
-private final TopuHudConfig config;
+    private final Screen parent;
+    private final TopuHudConfig config;
 
-private HudManager.Id dragging;
+    private HudManager.HudId dragging = null;
 
-private int dragOffsetX;
-private int dragOffsetY;
+    private int dragOffsetX;
+    private int dragOffsetY;
 
-public TopuScreenEditor(Screen parent) {
-    super(Text.literal("Topu HUD Editor"));
+    public TopuScreenEditor(Screen parent) {
+        super(Text.literal("Topu HUD Editor"));
 
-    this.parent = parent;
-    this.config = ConfigManager.get();
-}
+        this.parent = parent;
+        this.config = ConfigManager.get();
+    }
 
-// ============================================================
-// INIT
-// ============================================================
+    // ============================================================
+    // INIT
+    // ============================================================
 
-@Override
-protected void init() {
+    @Override
+    protected void init() {
 
-    int centerX = this.width / 2;
+        int centerX = this.width / 2;
 
-    this.addDrawableChild(
-            ButtonWidget.builder(
-                    Text.literal("Done"),
-                    button -> closeEditor()
-            ).dimensions(
-                    centerX - 50,
-                    this.height - 30,
-                    100,
-                    20
-            ).build()
-    );
-}
+        this.addDrawableChild(
+                ButtonWidget.builder(
+                        Text.literal("Done"),
+                        button -> closeEditor()
+                ).dimensions(
+                        centerX - 50,
+                        this.height - 30,
+                        100,
+                        20
+                ).build()
+        );
+    }
 
-// ============================================================
-// CLOSE
-// ============================================================
+    // ============================================================
+    // CLOSE
+    // ============================================================
 
-private void closeEditor() {
+    private void closeEditor() {
 
-    dragging = null;
+        dragging = null;
 
-    ConfigManager.save();
+        ConfigManager.save();
 
-    MinecraftClient.getInstance()
-            .setScreen(parent);
-}
+        MinecraftClient.getInstance()
+                .setScreen(parent);
+    }
 
-@Override
-public void close() {
-    closeEditor();
-}
+    @Override
+    public void close() {
+        closeEditor();
+    }
 
-// ============================================================
-// MOUSE CLICK
-// ============================================================
+    // ============================================================
+    // MOUSE CLICK
+    // ============================================================
 
-@Override
-public boolean mouseClicked(
-        double mouseX,
-        double mouseY,
-        int button
-) {
+    @Override
+    public boolean mouseClicked(
+            double mouseX,
+            double mouseY,
+            int button
+    ) {
 
-    if (button != 0) {
+        if (button != 0) {
+            return super.mouseClicked(
+                    mouseX,
+                    mouseY,
+                    button
+            );
+        }
+
+        HudManager.HudId[] ids =
+                HudManager.HudId.values();
+
+        /*
+         * Check backwards so HUD elements later
+         * in the enum have priority when overlapping.
+         */
+        for (int i = ids.length - 1; i >= 0; i--) {
+
+            HudManager.HudId id = ids[i];
+
+            if (!HudManager.isEnabledForEditor(id)) {
+                continue;
+            }
+
+            int[] position =
+                    HudManager.getPositionForEditor(
+                            config,
+                            id
+                    );
+
+            int width =
+                    HudManager.getWidthForEditor(id);
+
+            int height =
+                    HudManager.getHeightForEditor(id);
+
+            if (mouseX >= position[0]
+                    && mouseX <= position[0] + width
+                    && mouseY >= position[1]
+                    && mouseY <= position[1] + height) {
+
+                dragging = id;
+
+                dragOffsetX =
+                        (int) mouseX - position[0];
+
+                dragOffsetY =
+                        (int) mouseY - position[1];
+
+                return true;
+            }
+        }
+
         return super.mouseClicked(
                 mouseX,
                 mouseY,
@@ -87,386 +138,330 @@ public boolean mouseClicked(
         );
     }
 
-    HudManager.Id[] ids =
-            HudManager.Id.values();
+    // ============================================================
+    // MOUSE DRAG
+    // ============================================================
 
-    /*
-     * Check from last to first so elements later
-     * in the enum are treated as being on top.
-     */
-    for (int i = ids.length - 1;
-         i >= 0;
-         i--) {
+    @Override
+    public boolean mouseDragged(
+            double mouseX,
+            double mouseY,
+            int button,
+            double deltaX,
+            double deltaY
+    ) {
 
-        HudManager.Id id = ids[i];
-
-        if (!HudManager.isEnabledForEditor(id)) {
-            continue;
+        if (button != 0 || dragging == null) {
+            return false;
         }
-
-        int[] position =
-                HudManager.getPositionForEditor(
-                        config,
-                        id
-                );
 
         int width =
-                HudManager.getWidthForEditor(id);
+                HudManager.getWidthForEditor(
+                        dragging
+                );
 
         int height =
-                HudManager.getHeightForEditor(id);
+                HudManager.getHeightForEditor(
+                        dragging
+                );
 
-        if (mouseX >= position[0]
-                && mouseX <= position[0] + width
-                && mouseY >= position[1]
-                && mouseY <= position[1] + height) {
+        int newX =
+                (int) mouseX - dragOffsetX;
 
-            dragging = id;
+        int newY =
+                (int) mouseY - dragOffsetY;
 
-            dragOffsetX =
-                    (int) mouseX - position[0];
+        /*
+         * Keep HUD elements inside the screen.
+         */
+        newX = Math.max(
+                0,
+                Math.min(
+                        newX,
+                        Math.max(
+                                0,
+                                this.width - width
+                        )
+                )
+        );
 
-            dragOffsetY =
-                    (int) mouseY - position[1];
+        newY = Math.max(
+                28,
+                Math.min(
+                        newY,
+                        Math.max(
+                                28,
+                                this.height - height
+                        )
+                )
+        );
 
-            return true;
-        }
-    }
-
-    return super.mouseClicked(
-            mouseX,
-            mouseY,
-            button
-    );
-}
-
-// ============================================================
-// MOUSE DRAG
-// ============================================================
-
-@Override
-public boolean mouseDragged(
-        double mouseX,
-        double mouseY,
-        int button,
-        double deltaX,
-        double deltaY
-) {
-
-    if (button != 0 || dragging == null) {
-        return false;
-    }
-
-    int width =
-            HudManager.getWidthForEditor(
-                    dragging
-            );
-
-    int height =
-            HudManager.getHeightForEditor(
-                    dragging
-            );
-
-    int newX =
-            (int) mouseX -
-                    dragOffsetX;
-
-    int newY =
-            (int) mouseY -
-                    dragOffsetY;
-
-    /*
-     * Keep the module inside the editor.
-     */
-    newX = Math.max(
-            0,
-            Math.min(
-                    newX,
-                    this.width - width
-            )
-    );
-
-    newY = Math.max(
-            28,
-            Math.min(
-                    newY,
-                    this.height - height
-            )
-    );
-
-    HudManager.setPositionForEditor(
-            config,
-            dragging,
-            newX,
-            newY
-    );
-
-    return true;
-}
-
-// ============================================================
-// MOUSE RELEASE
-// ============================================================
-
-@Override
-public boolean mouseReleased(
-        double mouseX,
-        double mouseY,
-        int button
-) {
-
-    if (button == 0 && dragging != null) {
-
-        dragging = null;
-
-        ConfigManager.save();
+        HudManager.setPositionForEditor(
+                config,
+                dragging,
+                newX,
+                newY
+        );
 
         return true;
     }
 
-    return super.mouseReleased(
-            mouseX,
-            mouseY,
-            button
-    );
-}
+    // ============================================================
+    // MOUSE RELEASE
+    // ============================================================
 
-// ============================================================
-// RENDER
-// ============================================================
+    @Override
+    public boolean mouseReleased(
+            double mouseX,
+            double mouseY,
+            int button
+    ) {
 
-@Override
-public void render(
-        DrawContext drawContext,
-        int mouseX,
-        int mouseY,
-        float delta
-) {
+        if (button == 0 && dragging != null) {
 
-    /*
-     * Editor background.
-     */
-    drawContext.fill(
-            0,
-            0,
-            this.width,
-            this.height,
-            0xAA101010
-    );
+            dragging = null;
 
-    /*
-     * Header.
-     */
-    drawContext.fill(
-            0,
-            0,
-            this.width,
-            28,
-            0xEE181818
-    );
+            ConfigManager.save();
 
-    drawContext.drawText(
-            this.textRenderer,
-            Text.literal("TOPU HUD EDITOR"),
-            10,
-            9,
-            0xFFFFFF,
-            true
-    );
-
-    /*
-     * Instructions.
-     */
-    drawContext.drawText(
-            this.textRenderer,
-            Text.literal(
-                    "Drag HUD elements • Release mouse to place"
-            ),
-            10,
-            36,
-            0xAAAAAA,
-            false
-    );
-
-    /*
-     * Draw editor boxes.
-     */
-    for (HudManager.Id id :
-            HudManager.Id.values()) {
-
-        if (!HudManager.isEnabledForEditor(id)) {
-            continue;
+            return true;
         }
 
-        int[] position =
-                HudManager.getPositionForEditor(
-                        config,
-                        id
-                );
+        return super.mouseReleased(
+                mouseX,
+                mouseY,
+                button
+        );
+    }
 
-        int width =
-                HudManager.getWidthForEditor(id);
+    // ============================================================
+    // RENDER
+    // ============================================================
 
-        int height =
-                HudManager.getHeightForEditor(id);
-
-        boolean selected =
-                dragging == id;
-
-        int backgroundColor =
-                selected
-                        ? 0x5533AA77
-                        : 0x55222222;
-
-        int borderColor =
-                selected
-                        ? 0xFF00FF88
-                        : 0xFF777777;
+    @Override
+    public void render(
+            DrawContext drawContext,
+            int mouseX,
+            int mouseY,
+            float delta
+    ) {
 
         /*
          * Background.
          */
         drawContext.fill(
-                position[0],
-                position[1],
-                position[0] + width,
-                position[1] + height,
-                backgroundColor
+                0,
+                0,
+                this.width,
+                this.height,
+                0xAA101010
         );
 
         /*
-         * Border.
+         * Header.
          */
-        drawBorder(
-                drawContext,
-                position[0],
-                position[1],
-                width,
-                height,
-                borderColor
+        drawContext.fill(
+                0,
+                0,
+                this.width,
+                28,
+                0xEE181818
+        );
+
+        drawContext.drawText(
+                this.textRenderer,
+                Text.literal("TOPU HUD EDITOR"),
+                10,
+                9,
+                0xFFFFFF,
+                true
         );
 
         /*
-         * Module name.
+         * Instructions.
          */
         drawContext.drawText(
                 this.textRenderer,
-                getDisplayName(id),
-                position[0] + 4,
-                position[1] + 4,
-                selected
-                        ? 0x00FF88
-                        : 0xFFFFFF,
-                true
+                Text.literal(
+                        "Drag HUD elements to move them"
+                ),
+                10,
+                38,
+                0xAAAAAA,
+                false
+        );
+
+        /*
+         * Draw enabled HUD modules.
+         */
+        for (HudManager.HudId id :
+                HudManager.HudId.values()) {
+
+            if (!HudManager.isEnabledForEditor(id)) {
+                continue;
+            }
+
+            int[] position =
+                    HudManager.getPositionForEditor(
+                            config,
+                            id
+                    );
+
+            int width =
+                    HudManager.getWidthForEditor(id);
+
+            int height =
+                    HudManager.getHeightForEditor(id);
+
+            boolean selected =
+                    dragging == id;
+
+            /*
+             * Module background.
+             */
+            drawContext.fill(
+                    position[0],
+                    position[1],
+                    position[0] + width,
+                    position[1] + height,
+                    selected
+                            ? 0x6633AA77
+                            : 0x55222222
+            );
+
+            /*
+             * Module border.
+             */
+            drawBorder(
+                    drawContext,
+                    position[0],
+                    position[1],
+                    width,
+                    height,
+                    selected
+                            ? 0xFF00FF88
+                            : 0xFF777777
+            );
+
+            /*
+             * Module name.
+             */
+            drawContext.drawText(
+                    this.textRenderer,
+                    getDisplayName(id),
+                    position[0] + 4,
+                    position[1] + 4,
+                    selected
+                            ? 0x00FF88
+                            : 0xFFFFFF,
+                    true
+            );
+        }
+
+        /*
+         * Render Done button last.
+         */
+        super.render(
+                drawContext,
+                mouseX,
+                mouseY,
+                delta
         );
     }
 
-    /*
-     * Render the Done button.
-     */
-    super.render(
-            drawContext,
-            mouseX,
-            mouseY,
-            delta
-    );
-}
+    // ============================================================
+    // BORDER
+    // ============================================================
 
-// ============================================================
-// BORDER
-// ============================================================
+    private void drawBorder(
+            DrawContext drawContext,
+            int x,
+            int y,
+            int width,
+            int height,
+            int color
+    ) {
 
-private void drawBorder(
-        DrawContext drawContext,
-        int x,
-        int y,
-        int width,
-        int height,
-        int color
-) {
+        drawContext.fill(
+                x,
+                y,
+                x + width,
+                y + 1,
+                color
+        );
 
-    drawContext.fill(
-            x,
-            y,
-            x + width,
-            y + 1,
-            color
-    );
+        drawContext.fill(
+                x,
+                y + height - 1,
+                x + width,
+                y + height,
+                color
+        );
 
-    drawContext.fill(
-            x,
-            y + height - 1,
-            x + width,
-            y + height,
-            color
-    );
+        drawContext.fill(
+                x,
+                y,
+                x + 1,
+                y + height,
+                color
+        );
 
-    drawContext.fill(
-            x,
-            y,
-            x + 1,
-            y + height,
-            color
-    );
+        drawContext.fill(
+                x + width - 1,
+                y,
+                x + width,
+                y + height,
+                color
+        );
+    }
 
-    drawContext.fill(
-            x + width - 1,
-            y,
-            x + width,
-            y + height,
-            color
-    );
-}
+    // ============================================================
+    // DISPLAY NAME
+    // ============================================================
 
-// ============================================================
-// DISPLAY NAMES
-// ============================================================
+    private Text getDisplayName(
+            HudManager.HudId id
+    ) {
 
-private Text getDisplayName(
-        HudManager.Id id
-) {
+        return switch (id) {
 
-    return switch (id) {
+            case ARMOR ->
+                    Text.literal("Armor");
 
-        case ARMOR ->
-                Text.literal("Armor");
+            case FPS ->
+                    Text.literal("FPS");
 
-        case FPS ->
-                Text.literal("FPS");
+            case PING ->
+                    Text.literal("Ping");
 
-        case PING ->
-                Text.literal("Ping");
+            case TPS ->
+                    Text.literal("TPS");
 
-        case TPS ->
-                Text.literal("TPS");
+            case CPS ->
+                    Text.literal("CPS");
 
-        case CPS ->
-                Text.literal("CPS");
+            case COMBO ->
+                    Text.literal("Combo");
 
-        case COMBO ->
-                Text.literal("Combo");
+            case TOTEM ->
+                    Text.literal("Totems");
 
-        case TOTEM ->
-                Text.literal("Totems");
+            case POTION ->
+                    Text.literal("Potions");
 
-        case POTION ->
-                Text.literal("Potions");
+            case EFFECTS ->
+                    Text.literal("Effects");
 
-        case EFFECTS ->
-                Text.literal("Effects");
+            case GAPPLE ->
+                    Text.literal("Gapples");
 
-        case GAPPLE ->
-                Text.literal("Gapples");
+            case WARNING ->
+                    Text.literal("Armor Warning");
 
-        case WARNING ->
-                Text.literal("Armor Warning");
+            case ENEMY ->
+                    Text.literal("Enemy HP");
 
-        case ENEMY ->
-                Text.literal("Enemy HP");
-
-        case COOLDOWN ->
-                Text.literal("Attack Cooldown");
-    };
-}
-
+            case COOLDOWN ->
+                    Text.literal("Attack Cooldown");
+        };
+    }
 }
