@@ -1,4 +1,3 @@
-
 package com.bettertoppi.topuhud.hud;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
@@ -65,7 +64,12 @@ public final class HudManager {
     private static long lastTickNanos =
             System.nanoTime();
 
-    private enum HudId {
+    /*
+     * HUD element identifiers.
+     *
+     * PUBLIC so TopuScreenEditor can access them.
+     */
+    public enum HudId {
         ARMOR,
         FPS,
         PING,
@@ -146,9 +150,13 @@ public final class HudManager {
 
     public static void setMenuOpen(
             boolean value) {
+
         /*
-         * Menu state itself is controlled by Minecraft's current screen.
-         * This method exists for compatibility with TopuHudScreen.
+         * Menu state itself is controlled by Minecraft's
+         * current screen.
+         *
+         * This method exists for compatibility
+         * with TopuHudScreen.
          */
     }
 
@@ -167,10 +175,10 @@ public final class HudManager {
          * RIGHT CTRL EDIT MODE BEHAVIOR
          *
          * Entering edit mode:
-         *      Unlock mouse cursor
+         *      Unlock mouse cursor.
          *
          * Leaving edit mode:
-         *      Lock mouse cursor again
+         *      Lock mouse cursor again.
          */
         if (value) {
 
@@ -216,6 +224,7 @@ public final class HudManager {
 
         /*
          * RIGHT SHIFT
+         *
          * Open TopuHUD menu.
          */
         if (menuKey != null) {
@@ -234,16 +243,7 @@ public final class HudManager {
         /*
          * RIGHT CTRL
          *
-         * Toggles HUD edit mode.
-         *
-         * ON:
-         *      Cursor is released.
-         *
-         * OFF:
-         *      Cursor is locked again.
-         *
-         * This means ESC is no longer required
-         * to take the cursor out while editing.
+         * Toggle HUD edit mode.
          */
         if (editKey != null) {
 
@@ -257,6 +257,7 @@ public final class HudManager {
 
         /*
          * RIGHT ALT
+         *
          * Toggle sneak.
          */
         if (sneakKey != null) {
@@ -268,8 +269,9 @@ public final class HudManager {
             }
         }
 
-        if (client.player == null)
+        if (client.player == null) {
             return;
+        }
 
         TopuHudConfig config =
                 ConfigManager.get();
@@ -389,8 +391,7 @@ public final class HudManager {
             if (!mouseDown &&
                     leftMouseWasDown) {
 
-                draggingHud =
-                        null;
+                draggingHud = null;
 
                 ConfigManager.save();
             }
@@ -700,6 +701,52 @@ public final class HudManager {
     }
 
     // ============================================================
+    // EDITOR API
+    // ============================================================
+
+    public static boolean isEnabledForEditor(
+            HudId id) {
+
+        return isEnabled(id);
+    }
+
+    public static int[] getPositionForEditor(
+            TopuHudConfig config,
+            HudId id) {
+
+        return getPosition(
+                config,
+                id
+        );
+    }
+
+    public static void setPositionForEditor(
+            TopuHudConfig config,
+            HudId id,
+            int x,
+            int y) {
+
+        setPosition(
+                config,
+                id,
+                x,
+                y
+        );
+    }
+
+    public static int getWidthForEditor(
+            HudId id) {
+
+        return getWidth(id);
+    }
+
+    public static int getHeightForEditor(
+            HudId id) {
+
+        return getHeight(id);
+    }
+
+    // ============================================================
     // DRAGGING
     // ============================================================
 
@@ -712,11 +759,23 @@ public final class HudManager {
         int mouseY =
                 getMouseGuiY(client);
 
-        for (HudId id :
-                HudId.values()) {
+        /*
+         * Search backwards so elements later in the
+         * enum are considered to be on top.
+         */
+        HudId[] ids =
+                HudId.values();
 
-            if (!isEnabled(id))
+        for (int i = ids.length - 1;
+                i >= 0;
+                i--) {
+
+            HudId id =
+                    ids[i];
+
+            if (!isEnabled(id)) {
                 continue;
+            }
 
             int[] position =
                     getPosition(
@@ -754,8 +813,9 @@ public final class HudManager {
     private static void updateDrag(
             MinecraftClient client) {
 
-        if (draggingHud == null)
+        if (draggingHud == null) {
             return;
+        }
 
         int mouseX =
                 getMouseGuiX(client);
@@ -763,19 +823,62 @@ public final class HudManager {
         int mouseY =
                 getMouseGuiY(client);
 
+        int width =
+                getWidth(draggingHud);
+
+        int height =
+                getHeight(draggingHud);
+
+        int screenWidth =
+                client.getWindow()
+                        .getScaledWidth();
+
+        int screenHeight =
+                client.getWindow()
+                        .getScaledHeight();
+
+        int newX =
+                mouseX -
+                dragOffsetX;
+
+        int newY =
+                mouseY -
+                dragOffsetY;
+
+        /*
+         * Keep the HUD completely inside the screen.
+         */
+        newX =
+                Math.max(
+                        0,
+                        Math.min(
+                                newX,
+                                Math.max(
+                                        0,
+                                        screenWidth -
+                                        width
+                                )
+                        )
+                );
+
+        newY =
+                Math.max(
+                        0,
+                        Math.min(
+                                newY,
+                                Math.max(
+                                        0,
+                                        screenHeight -
+                                        height
+                                )
+                        )
+                );
+
         setPosition(
                 ConfigManager.get(),
                 draggingHud,
-                Math.max(
-                        0,
-                        mouseX -
-                        dragOffsetX
-                ),
-                Math.max(
-                        0,
-                        mouseY -
-                        dragOffsetY
-                )
+                newX,
+                newY
         );
     }
 
@@ -967,8 +1070,9 @@ public final class HudManager {
             for (HudId id :
                     HudId.values()) {
 
-                if (!isEnabled(id))
+                if (!isEnabled(id)) {
                     continue;
+                }
 
                 int[] position =
                         getPosition(
@@ -1009,8 +1113,9 @@ public final class HudManager {
                             .getInventory()
                             .getArmorStack(i);
 
-            if (stack.isEmpty())
+            if (stack.isEmpty()) {
                 continue;
+            }
 
             int slotX =
                     x +
@@ -1272,8 +1377,9 @@ public final class HudManager {
 
             shown++;
 
-            if (shown >= 6)
+            if (shown >= 6) {
                 break;
+            }
         }
     }
 
@@ -1294,8 +1400,9 @@ public final class HudManager {
                             .getInventory()
                             .getArmorStack(i);
 
-            if (!stack.isDamageable())
+            if (!stack.isDamageable()) {
                 continue;
+            }
 
             double percent =
                     100.0 *
@@ -1513,4 +1620,3 @@ public final class HudManager {
         );
     }
 }
-
