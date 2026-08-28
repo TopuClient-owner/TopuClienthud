@@ -175,7 +175,7 @@ public final class TopuScreenEditor extends Screen {
         /*
          * Keep HUD elements inside the screen.
          *
-         * Header occupies the top 28 pixels.
+         * The top 28 pixels are reserved for the editor header.
          */
         newX = Math.max(
                 0,
@@ -249,7 +249,7 @@ public final class TopuScreenEditor extends Screen {
     ) {
 
         /*
-         * Dark editor background.
+         * Background.
          */
         drawContext.fill(
                 0,
@@ -465,7 +465,18 @@ public final class TopuScreenEditor extends Screen {
 
             case COOLDOWN ->
                     Text.literal("Attack Cooldown");
+
+            case BLOCK_OVERLAY ->
+                    Text.literal("Block Overlay");
+
+            case KEYSTROKES ->
+                    Text.literal("Keystrokes");
+
+            case MEMORY ->
+                    Text.literal("Memory");
+
+            default ->
+                    Text.literal("HUD");
         };
     }
 }
-
