@@ -2,56 +2,368 @@ package com.bettertoppi.topuhud.modmenu;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
 import com.bettertoppi.topuhud.config.TopuHudConfig;
-import com.bettertoppi.topuhud.hud.HudManager;
+
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public final class TopuHudScreen extends Screen {
+
     private final Screen parent;
-    private static final String[][] MODULES={
-        {"Armor HUD","armor"},{"FPS Counter","fps"},{"Ping Display","ping"},{"Server TPS","tps"},
-        {"CPS Display","cps"},{"Combo Counter","combo"},{"Totem Counter","totem"},{"Potion Effects","effects"},
-        {"Potion Counter","potion"},{"Gapple Counter","gapple"},{"Auto Sprint","sprint"},{"Toggle Sneak","sneak"},
-        {"Armor Warning","warning"},{"Enemy Health","enemy"},{"Attack Cooldown","cooldown"}
-    };
+    private final TopuHudConfig config;
 
-    public TopuHudScreen(Screen parent){super(Text.literal("Topu HUD"));this.parent=parent;}
+    public TopuHudScreen(Screen parent) {
+        super(Text.literal("Topu HUD"));
 
-    @Override protected void init(){
-        int x=width/2-220,y=54;
-        for(String[] m:MODULES){
-            String name=m[0],id=m[1];
-            addDrawableChild(ButtonWidget.builder(Text.literal(label(name,id)),b->{toggle(id);b.setMessage(Text.literal(label(name,id)));})
-                    .dimensions(x,y,205,21).build());
-            y+=24;
-            if(y>height-70){y=54;x+=214;}
-        }
-        addDrawableChild(ButtonWidget.builder(Text.literal("Edit HUD [Right Ctrl]"),b->HudManager.setEditMode(true))
-                .dimensions(width/2-105,height-42,210,22).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Close"),b->close())
-                .dimensions(width-82,10,68,20).build());
+        this.parent = parent;
+        this.config = ConfigManager.get();
     }
 
-    private String label(String n,String id){return n+" ["+(enabled(id)?"ON":"OFF")+"]";}
-    private boolean enabled(String id){TopuHudConfig c=ConfigManager.get();return switch(id){
-        case "armor"->c.armorHud;case "fps"->c.fpsCounter;case "ping"->c.pingDisplay;case "tps"->c.tpsDisplay;
-        case "cps"->c.cpsDisplay;case "combo"->c.comboCounter;case "totem"->c.totemCounter;case "effects"->c.potionEffects;
-        case "potion"->c.potionCounter;case "gapple"->c.gappleCounter;case "sprint"->c.autoSprint;case "sneak"->c.toggleSneak;
-        case "warning"->c.armorWarning;case "enemy"->c.enemyHealth;case "cooldown"->c.cooldown;default->false;};}
-    private void toggle(String id){TopuHudConfig c=ConfigManager.get();switch(id){
-        case "armor"->c.armorHud=!c.armorHud;case "fps"->c.fpsCounter=!c.fpsCounter;case "ping"->c.pingDisplay=!c.pingDisplay;
-        case "tps"->c.tpsDisplay=!c.tpsDisplay;case "cps"->c.cpsDisplay=!c.cpsDisplay;case "combo"->c.comboCounter=!c.comboCounter;
-        case "totem"->c.totemCounter=!c.totemCounter;case "effects"->c.potionEffects=!c.potionEffects;case "potion"->c.potionCounter=!c.potionCounter;
-        case "gapple"->c.gappleCounter=!c.gappleCounter;case "sprint"->c.autoSprint=!c.autoSprint;case "sneak"->c.toggleSneak=!c.toggleSneak;
-        case "warning"->c.armorWarning=!c.armorWarning;case "enemy"->c.enemyHealth=!c.enemyHealth;case "cooldown"->c.cooldown=!c.cooldown;}
-        ConfigManager.save();}
-    @Override public void render(DrawContext d,int mx,int my,float dt){
-        d.fill(0,0,width,height,0xEA101014);d.fill(0,0,width,42,0xFF18181D);
-        d.drawText(textRenderer,Text.literal("TOPU HUD"),16,12,0x00FF88,true);
-        d.drawText(textRenderer,Text.literal("Right Ctrl = move HUD • Right Alt = toggle sneak"),112,12,0xAAAAAA,false);
-        super.render(d,mx,my,dt);
+    @Override
+    protected void init() {
+
+        int centerX = this.width / 2;
+
+        /*
+         * EDIT HUD
+         */
+        this.addDrawableChild(
+                ButtonWidget.builder(
+                        Text.literal("Edit HUD"),
+                        button -> openEditor()
+                ).dimensions(
+                        centerX - 75,
+                        50,
+                        150,
+                        20
+                ).build()
+        );
+
+        /*
+         * HUD MODULE BUTTONS
+         */
+        int startY = 85;
+        int rowHeight = 24;
+
+        addToggleButton(
+                "Armor",
+                centerX - 160,
+                startY,
+                () -> config.armorHud,
+                value -> config.armorHud = value
+        );
+
+        addToggleButton(
+                "FPS",
+                centerX + 10,
+                startY,
+                () -> config.fpsCounter,
+                value -> config.fpsCounter = value
+        );
+
+        addToggleButton(
+                "Ping",
+                centerX - 160,
+                startY + rowHeight,
+                () -> config.pingDisplay,
+                value -> config.pingDisplay = value
+        );
+
+        addToggleButton(
+                "TPS",
+                centerX + 10,
+                startY + rowHeight,
+                () -> config.tpsDisplay,
+                value -> config.tpsDisplay = value
+        );
+
+        addToggleButton(
+                "CPS",
+                centerX - 160,
+                startY + rowHeight * 2,
+                () -> config.cpsDisplay,
+                value -> config.cpsDisplay = value
+        );
+
+        addToggleButton(
+                "Combo",
+                centerX + 10,
+                startY + rowHeight * 2,
+                () -> config.comboCounter,
+                value -> config.comboCounter = value
+        );
+
+        addToggleButton(
+                "Totems",
+                centerX - 160,
+                startY + rowHeight * 3,
+                () -> config.totemCounter,
+                value -> config.totemCounter = value
+        );
+
+        addToggleButton(
+                "Potions",
+                centerX + 10,
+                startY + rowHeight * 3,
+                () -> config.potionCounter,
+                value -> config.potionCounter = value
+        );
+
+        addToggleButton(
+                "Effects",
+                centerX - 160,
+                startY + rowHeight * 4,
+                () -> config.potionEffects,
+                value -> config.potionEffects = value
+        );
+
+        addToggleButton(
+                "Gapples",
+                centerX + 10,
+                startY + rowHeight * 4,
+                () -> config.gappleCounter,
+                value -> config.gappleCounter = value
+        );
+
+        addToggleButton(
+                "Armor Warning",
+                centerX - 160,
+                startY + rowHeight * 5,
+                () -> config.armorWarning,
+                value -> config.armorWarning = value
+        );
+
+        addToggleButton(
+                "Enemy HP",
+                centerX + 10,
+                startY + rowHeight * 5,
+                () -> config.enemyHealth,
+                value -> config.enemyHealth = value
+        );
+
+        addToggleButton(
+                "Attack Cooldown",
+                centerX - 160,
+                startY + rowHeight * 6,
+                () -> config.cooldown,
+                value -> config.cooldown = value
+        );
+
+        /*
+         * AUTO SPRINT
+         */
+        addToggleButton(
+                "Auto Sprint",
+                centerX + 10,
+                startY + rowHeight * 6,
+                () -> config.autoSprint,
+                value -> config.autoSprint = value
+        );
+
+        /*
+         * TOGGLE SNEAK
+         */
+        addToggleButton(
+                "Toggle Sneak",
+                centerX - 160,
+                startY + rowHeight * 7,
+                () -> config.toggleSneak,
+                value -> config.toggleSneak = value
+        );
+
+        /*
+         * DONE
+         */
+        this.addDrawableChild(
+                ButtonWidget.builder(
+                        Text.literal("Done"),
+                        button -> closeScreen()
+                ).dimensions(
+                        centerX - 75,
+                        this.height - 30,
+                        150,
+                        20
+                ).build()
+        );
     }
-    @Override public void close(){ConfigManager.save();HudManager.setMenuOpen(false);if(client!=null)client.setScreen(parent);}
+
+    /*
+     * ============================================================
+     * TOGGLE BUTTON
+     * ============================================================
+     */
+
+    private void addToggleButton(
+            String name,
+            int x,
+            int y,
+            BooleanSupplier getter,
+            BooleanConsumer setter
+    ) {
+
+        ButtonWidget button =
+                ButtonWidget.builder(
+                        getToggleText(name, getter.getAsBoolean()),
+                        clicked -> {
+
+                            boolean newValue =
+                                    !getter.getAsBoolean();
+
+                            setter.accept(newValue);
+
+                            clicked.setMessage(
+                                    getToggleText(
+                                            name,
+                                            newValue
+                                    )
+                            );
+
+                            ConfigManager.save();
+                        }
+                ).dimensions(
+                        x,
+                        y,
+                        150,
+                        20
+                ).build();
+
+        this.addDrawableChild(button);
+    }
+
+    private Text getToggleText(
+            String name,
+            boolean enabled
+    ) {
+
+        return Text.literal(
+                name +
+                        ": " +
+                        (enabled
+                                ? "ON"
+                                : "OFF")
+        );
+    }
+
+    /*
+     * ============================================================
+     * EDITOR
+     * ============================================================
+     */
+
+    private void openEditor() {
+
+        MinecraftClient.getInstance()
+                .setScreen(
+                        new TopuScreenEditor(this)
+                );
+    }
+
+    /*
+     * ============================================================
+     * CLOSE
+     * ============================================================
+     */
+
+    private void closeScreen() {
+
+        ConfigManager.save();
+
+        MinecraftClient.getInstance()
+                .setScreen(parent);
+    }
+
+    @Override
+    public void close() {
+        closeScreen();
+    }
+
+    /*
+     * ============================================================
+     * RENDER
+     * ============================================================
+     */
+
+    @Override
+    public void render(
+            DrawContext drawContext,
+            int mouseX,
+            int mouseY,
+            float delta
+    ) {
+
+        /*
+         * Background
+         */
+        drawContext.fill(
+                0,
+                0,
+                this.width,
+                this.height,
+                0xCC101010
+        );
+
+        /*
+         * Header
+         */
+        drawContext.fill(
+                0,
+                0,
+                this.width,
+                32,
+                0xEE181818
+        );
+
+        drawContext.drawText(
+                this.textRenderer,
+                Text.literal("TOPU HUD"),
+                10,
+                10,
+                0xFFFFFF,
+                true
+        );
+
+        /*
+         * Description
+         */
+        drawContext.drawText(
+                this.textRenderer,
+                Text.literal(
+                        "Enable or disable HUD modules"
+                ),
+                10,
+                36,
+                0xAAAAAA,
+                false
+        );
+
+        /*
+         * Render buttons
+         */
+        super.render(
+                drawContext,
+                mouseX,
+                mouseY,
+                delta
+        );
+    }
+
+    /*
+     * ============================================================
+     * SMALL FUNCTIONAL INTERFACES
+     * ============================================================
+     */
+
+    @FunctionalInterface
+    private interface BooleanSupplier {
+
+        boolean getAsBoolean();
+    }
+
+    @FunctionalInterface
+    private interface BooleanConsumer {
+
+        void accept(boolean value);
+    }
 }
