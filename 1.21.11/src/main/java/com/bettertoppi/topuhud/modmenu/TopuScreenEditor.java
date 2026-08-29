@@ -1,5 +1,3 @@
-
-
 package com.bettertoppi.topuhud.modmenu;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
@@ -7,6 +5,7 @@ import com.bettertoppi.topuhud.config.TopuHudConfig;
 import com.bettertoppi.topuhud.hud.HudManager;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -76,18 +75,23 @@ public final class TopuScreenEditor extends Screen {
 
     @Override
     public boolean mouseClicked(
-            double mouseX,
-            double mouseY,
-            int button
+            Click click,
+            boolean doubled
     ) {
 
-        if (button != 0) {
+        if (click.button() != 0) {
+
             return super.mouseClicked(
-                    mouseX,
-                    mouseY,
-                    button
+                    click,
+                    doubled
             );
         }
+
+        double mouseX =
+                click.x();
+
+        double mouseY =
+                click.y();
 
         HudManager.HudId[] ids =
                 HudManager.HudId.values();
@@ -98,7 +102,8 @@ public final class TopuScreenEditor extends Screen {
          */
         for (int i = ids.length - 1; i >= 0; i--) {
 
-            HudManager.HudId id = ids[i];
+            HudManager.HudId id =
+                    ids[i];
 
             if (!HudManager.isEnabledForEditor(id)) {
                 continue;
@@ -134,9 +139,8 @@ public final class TopuScreenEditor extends Screen {
         }
 
         return super.mouseClicked(
-                mouseX,
-                mouseY,
-                button
+                click,
+                doubled
         );
     }
 
@@ -146,16 +150,22 @@ public final class TopuScreenEditor extends Screen {
 
     @Override
     public boolean mouseDragged(
-            double mouseX,
-            double mouseY,
-            int button,
-            double deltaX,
-            double deltaY
+            Click click,
+            double offsetX,
+            double offsetY
     ) {
 
-        if (button != 0 || dragging == null) {
+        if (click.button() != 0 ||
+                dragging == null) {
+
             return false;
         }
+
+        double mouseX =
+                click.x();
+
+        double mouseY =
+                click.y();
 
         int width =
                 HudManager.getWidthForEditor(
@@ -176,7 +186,8 @@ public final class TopuScreenEditor extends Screen {
         /*
          * Keep HUD elements inside the screen.
          *
-         * The top 28 pixels are reserved for the editor header.
+         * The top 28 pixels are reserved
+         * for the editor header.
          */
         newX = Math.max(
                 0,
@@ -216,12 +227,11 @@ public final class TopuScreenEditor extends Screen {
 
     @Override
     public boolean mouseReleased(
-            double mouseX,
-            double mouseY,
-            int button
+            Click click
     ) {
 
-        if (button == 0 && dragging != null) {
+        if (click.button() == 0 &&
+                dragging != null) {
 
             dragging = null;
 
@@ -231,9 +241,7 @@ public final class TopuScreenEditor extends Screen {
         }
 
         return super.mouseReleased(
-                mouseX,
-                mouseY,
-                button
+                click
         );
     }
 
@@ -475,9 +483,6 @@ public final class TopuScreenEditor extends Screen {
 
             case MEMORY ->
                     Text.literal("Memory");
-
-            default ->
-                    Text.literal("HUD");
         };
     }
 }
