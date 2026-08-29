@@ -24,6 +24,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.MathHelper;
 
@@ -37,6 +38,11 @@ public final class HudManager {
     private static KeyBinding menuKey;
     private static KeyBinding editKey;
     private static KeyBinding sneakKey;
+
+    private static final KeyBinding.Category TOPU_HUD_CATEGORY =
+            KeyBinding.Category.create(
+                    Identifier.of("topuhud", "category")
+            );
 
     private static boolean sneakToggled;
     private static boolean editMode;
@@ -97,7 +103,7 @@ public final class HudManager {
                         "key.topuhud.menu",
                         InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_RIGHT_SHIFT,
-                        "category.topuhud"
+                        TOPU_HUD_CATEGORY
                 )
         );
 
@@ -106,7 +112,7 @@ public final class HudManager {
                         "key.topuhud.edit",
                         InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_RIGHT_CONTROL,
-                        "category.topuhud"
+                        TOPU_HUD_CATEGORY
                 )
         );
 
@@ -115,7 +121,7 @@ public final class HudManager {
                         "key.topuhud.sneak",
                         InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_RIGHT_ALT,
-                        "category.topuhud"
+                        TOPU_HUD_CATEGORY
                 )
         );
 
@@ -1141,7 +1147,8 @@ public final class HudManager {
                                 id
                         );
 
-                drawContext.drawBorder(
+                drawBorder(
+                        drawContext,
                         position[0] - 2,
                         position[1] - 2,
                         getWidth(id) + 4,
@@ -1163,20 +1170,6 @@ public final class HudManager {
             DrawContext drawContext,
             int x,
             int y) {
-
-        /*
-         * Minecraft 1.21.8:
-         * PlayerInventory no longer exposes getArmorStack(int)
-         * in these mappings.
-         *
-         * EquipmentSlot is used instead.
-         *
-         * Inventory armor order:
-         * 0 = FEET
-         * 1 = LEGS
-         * 2 = CHEST
-         * 3 = HEAD
-         */
 
         EquipmentSlot[] armorSlots = {
                 EquipmentSlot.FEET,
@@ -1827,7 +1820,8 @@ public final class HudManager {
                         : 0xAA222222
         );
 
-        drawContext.drawBorder(
+        drawBorder(
+                drawContext,
                 x,
                 y,
                 width,
@@ -1904,6 +1898,51 @@ public final class HudManager {
                 ),
                 x,
                 y + 12
+        );
+    }
+
+    // ============================================================
+    // BORDER
+    // ============================================================
+
+    private static void drawBorder(
+            DrawContext drawContext,
+            int x,
+            int y,
+            int width,
+            int height,
+            int color) {
+
+        drawContext.fill(
+                x,
+                y,
+                x + width,
+                y + 1,
+                color
+        );
+
+        drawContext.fill(
+                x,
+                y + height - 1,
+                x + width,
+                y + height,
+                color
+        );
+
+        drawContext.fill(
+                x,
+                y,
+                x + 1,
+                y + height,
+                color
+        );
+
+        drawContext.fill(
+                x + width - 1,
+                y,
+                x + width,
+                y + height,
+                color
         );
     }
 
