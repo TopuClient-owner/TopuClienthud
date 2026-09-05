@@ -4,24 +4,15 @@
   "version": "${version}",
   "name": "TopuHUD",
   "description": "Topu Client PvP HUD and utility menu.",
-  "authors": [
-    "Topu Client"
-  ],
+  "authors": ["Topu Client"],
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.bettertoppi.topuhud.TopuHudClient"
+      "com.bettertoppi.topuhud.TopuHudClient",
+      "com.bettertoppi.topuhud.hud.TopuUtilityHud"
     ],
-    "modmenu": [
-      "com.bettertoppi.topuhud.modmenu.TopuHudModMenu"
-    ]
+    "modmenu": ["com.bettertoppi.topuhud.modmenu.TopuHudModMenu"]
   },
-  "mixins": [
-    "topuhud.mixins.json"
-  ],
-  "depends": {
-    "fabricloader": ">=0.16.0",
-    "minecraft": "~1.21.8",
-    "fabric-api": "*"
-  }
+  "mixins": ["topuhud.mixins.json"],
+  "depends": {"fabricloader": ">=0.16.0", "minecraft": "~1.21.8", "fabric-api": "*"}
 }
