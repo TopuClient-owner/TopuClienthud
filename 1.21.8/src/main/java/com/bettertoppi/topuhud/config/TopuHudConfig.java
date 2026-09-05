@@ -1,90 +1,23 @@
 package com.bettertoppi.topuhud.config;
 
-public class TopuHudConfig {
+public final class TopuHudConfig {
+    public boolean armorHud=true, fpsCounter=true, pingDisplay=true, tpsDisplay=true;
+    public boolean cpsDisplay=true, comboCounter=true, totemCounter=true, potionEffects=true, potionCounter=true, gappleCounter=true;
+    public boolean armorWarning=true, enemyHealth=true, cooldown=true, blockOverlay=true, keystrokes=true, memory=true;
+    public boolean autoSprint=true, toggleSneak=true, editMode=false;
 
-    // ============================================================
-    // HUD ENABLE / DISABLE
-    // ============================================================
+    // Built-in Topu Utility modules (50 total)
+    public boolean utilityCoordinates=true, utilityDirection=true, utilitySpeed=true;
+    public boolean utilityJumpCounter=false, utilityFallDistance=false, utilitySprintStatus=false, utilityVelocity=false;
+    public boolean utilityCrosshair=false, utilityHitColor=false, utilityHitSound=false, utilityReach=false, utilityAttackIndicator=true;
+    public boolean utilityZoom=false, utilityFullbright=false, utilityFpsLimiter=false, utilityLowLatency=false, utilityCleanHud=false;
+    public boolean utilityMinimalParticles=false, utilityItemPhysics=false, utilityClock=false, utilityServer=false, utilityBiome=false;
+    public boolean utilityFacing=false, utilityChunkInfo=false, utilityLightLevel=false, utilityTargetInfo=false, utilityDurability=false;
+    public boolean utilityHeldItem=false, utilityGamemode=false, utilityDifficulty=false, utilityFpsGraph=false, utilitySession=false;
 
-    public boolean armorHud = true;
-    public boolean fpsCounter = true;
-    public boolean pingDisplay = true;
-    public boolean tpsDisplay = false;
-    public boolean cpsDisplay = true;
-    public boolean comboCounter = true;
-    public boolean totemCounter = true;
-    public boolean potionCounter = true;
-    public boolean potionEffects = true;
-    public boolean gappleCounter = true;
-    public boolean armorWarning = true;
-    public boolean enemyHealth = true;
-    public boolean cooldown = true;
-
-    public boolean blockOverlay = true;
-    public boolean keystrokes = true;
-    public boolean memory = true;
-
-    // ============================================================
-    // CLIENT FEATURES
-    // ============================================================
-
-    public boolean toggleSneak = false;
-    public boolean autoSprint = false;
-    public boolean editMode = false;
-
-    // ============================================================
-    // HUD POSITIONS
-    // ============================================================
-
-    public int armorX = 10;
-    public int armorY = 30;
-
-    public int fpsX = 10;
-    public int fpsY = 65;
-
-    public int pingX = 10;
-    public int pingY = 87;
-
-    public int tpsX = 10;
-    public int tpsY = 109;
-
-    public int cpsX = 10;
-    public int cpsY = 131;
-
-    public int comboX = 10;
-    public int comboY = 153;
-
-    public int totemX = 10;
-    public int totemY = 175;
-
-    public int potionX = 10;
-    public int potionY = 197;
-
-    public int effectsX = 10;
-    public int effectsY = 219;
-
-    public int gappleX = 10;
-    public int gappleY = 301;
-
-    public int warningX = 10;
-    public int warningY = 323;
-
-    public int enemyHealthX = 10;
-    public int enemyHealthY = 345;
-
-    public int cooldownX = 10;
-    public int cooldownY = 370;
-
-    // ============================================================
-    // EXTRA HUD POSITIONS
-    // ============================================================
-
-    public int blockOverlayX = 10;
-    public int blockOverlayY = 400;
-
-    public int keystrokesX = 10;
-    public int keystrokesY = 450;
-
-    public int memoryX = 10;
-    public int memoryY = 520;
+    public int armorX=10, armorY=10, fpsX=10, fpsY=70, pingX=10, pingY=86, tpsX=10, tpsY=102;
+    public int cpsX=10, cpsY=118, comboX=10, comboY=134, totemX=10, totemY=150, potionX=10, potionY=166;
+    public int effectsX=10, effectsY=182, gappleX=10, gappleY=214, warningX=10, warningY=232;
+    public int enemyHealthX=10, enemyHealthY=250, cooldownX=10, cooldownY=270;
+    public int blockOverlayX=10, blockOverlayY=300, keystrokesX=10, keystrokesY=340, memoryX=10, memoryY=410;
 }
