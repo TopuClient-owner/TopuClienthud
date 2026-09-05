@@ -59,8 +59,7 @@ public final class TopuUtilityManager {
         u("gamemode","Game Mode","Current game mode display",Category.WORLD,"utilityGamemode"),
         u("difficulty","Difficulty","Current world difficulty",Category.WORLD,"utilityDifficulty"),
         u("fpsgraph","FPS Graph","Recent FPS history graph",Category.PERFORMANCE,"utilityFpsGraph"),
-        u("session","Session","Session play-time display",Category.MISC,"utilitySession"),
-        u("modinfo","Mod Info","Topu HUD status",Category.MISC,"utilityModInfo")
+        u("session","Session","Session play-time display",Category.MISC,"utilitySession")
     };
 
     private static Utility u(String id, String name, String description, Category category, String field) {
