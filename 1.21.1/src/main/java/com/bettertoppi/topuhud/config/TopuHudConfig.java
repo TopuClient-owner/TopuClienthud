@@ -6,14 +6,14 @@ public final class TopuHudConfig {
     public boolean armorWarning=true, enemyHealth=true, cooldown=true, blockOverlay=true, keystrokes=true, memory=true;
     public boolean autoSprint=true, toggleSneak=true, editMode=false;
 
-    // Built-in Topu Utility modules
+    // Built-in Topu Utility modules (50 total)
     public boolean utilityCoordinates=true, utilityDirection=true, utilitySpeed=true;
     public boolean utilityJumpCounter=false, utilityFallDistance=false, utilitySprintStatus=false, utilityVelocity=false;
     public boolean utilityCrosshair=false, utilityHitColor=false, utilityHitSound=false, utilityReach=false, utilityAttackIndicator=true;
     public boolean utilityZoom=false, utilityFullbright=false, utilityFpsLimiter=false, utilityLowLatency=false, utilityCleanHud=false;
     public boolean utilityMinimalParticles=false, utilityItemPhysics=false, utilityClock=false, utilityServer=false, utilityBiome=false;
     public boolean utilityFacing=false, utilityChunkInfo=false, utilityLightLevel=false, utilityTargetInfo=false, utilityDurability=false;
-    public boolean utilityHeldItem=false, utilityGamemode=false, utilityDifficulty=false, utilityFpsGraph=false, utilitySession=false, utilityModInfo=true;
+    public boolean utilityHeldItem=false, utilityGamemode=false, utilityDifficulty=false, utilityFpsGraph=false, utilitySession=false;
 
     public int armorX=10, armorY=10, fpsX=10, fpsY=70, pingX=10, pingY=86, tpsX=10, tpsY=102;
     public int cpsX=10, cpsY=118, comboX=10, comboY=134, totemX=10, totemY=150, potionX=10, potionY=166;
