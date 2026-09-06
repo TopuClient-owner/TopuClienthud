@@ -9,21 +9,46 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
-        version: ["1.21.1","1.21.4","1.21.8","1.21.11"]
+        include:
+          - version: "1.21.1"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "1.21.4"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "1.21.8"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "1.21.11"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "26.1.2"
+            java: "25"
+            gradle: "9.5.1"
+          - version: "26.2"
+            java: "25"
+            gradle: "9.5.1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: ${{ matrix.java }}
           cache: gradle
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.14.5"
-      - name: Build
+          gradle-version: ${{ matrix.gradle }}
+      - name: Build with retry
         working-directory: ${{ matrix.version }}
-        run: gradle clean build --no-daemon
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4; do
+            if gradle clean build --no-daemon; then exit 0; fi
+            if [ "$attempt" -lt 4 ]; then sleep 45; fi
+          done
+          exit 1
       - name: Rename JAR
         run: |
           mkdir -p release
