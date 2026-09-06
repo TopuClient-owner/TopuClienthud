@@ -8,8 +8,7 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.bettertoppi.topuhud.TopuHudClient",
-      "com.bettertoppi.topuhud.hud.TopuUtilityHud"
+      "com.bettertoppi.topuhud.TopuHudClient"
     ],
     "modmenu": ["com.bettertoppi.topuhud.modmenu.TopuHudModMenu"]
   },
