@@ -10,54 +10,65 @@ jobs:
   build:
     name: Build TopuHUD ${{ matrix.version }}
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        version:
-          - "1.21.1"
-          - "1.21.4"
-          - "1.21.8"
-          - "1.21.11"
+        include:
+          - version: "1.21.1"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "1.21.4"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "1.21.8"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "1.21.11"
+            java: "21"
+            gradle: "9.2.0"
+          - version: "26.1.2"
+            java: "25"
+            gradle: "9.5.1"
+          - version: "26.2"
+            java: "25"
+            gradle: "9.5.1"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: ${{ matrix.java }}
           cache: gradle
 
-      - name: Set up Gradle
+      - name: Set up Gradle ${{ matrix.gradle }}
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.2.0"
+          gradle-version: ${{ matrix.gradle }}
 
       - name: Show Java and Gradle versions
         run: |
           java -version
           gradle --version
 
-      - name: Clean build with Maven retry
+      - name: Clean build with retry
         working-directory: ${{ matrix.version }}
         shell: bash
         run: |
           for attempt in 1 2 3 4; do
-            echo "===== Gradle build attempt ${attempt}/4 ====="
-            if gradle clean build --no-daemon; then
-              echo "Build succeeded on attempt ${attempt}."
+            echo "Build attempt $attempt/4 for ${{ matrix.version }}"
+            if gradle clean build --no-daemon --stacktrace; then
               exit 0
             fi
             if [ "$attempt" -lt 4 ]; then
-              echo "Build failed, waiting 30 seconds before retrying to avoid transient Maven rate limits..."
-              sleep 30
+              echo "Build failed; waiting 45 seconds before retry..."
+              sleep 45
             fi
           done
-          echo "Gradle build failed after 4 attempts."
           exit 1
 
       - name: Upload build artifacts
