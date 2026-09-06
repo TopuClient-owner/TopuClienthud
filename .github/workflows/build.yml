@@ -13,6 +13,7 @@ jobs:
 
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         version:
           - "1.21.1"
@@ -41,9 +42,23 @@ jobs:
           java -version
           gradle --version
 
-      - name: Clean build
+      - name: Clean build with Maven retry
         working-directory: ${{ matrix.version }}
-        run: gradle clean build --no-daemon
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4; do
+            echo "===== Gradle build attempt ${attempt}/4 ====="
+            if gradle clean build --no-daemon; then
+              echo "Build succeeded on attempt ${attempt}."
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "Build failed, waiting 30 seconds before retrying to avoid transient Maven rate limits..."
+              sleep 30
+            fi
+          done
+          echo "Gradle build failed after 4 attempts."
+          exit 1
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
