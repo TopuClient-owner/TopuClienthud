@@ -11,6 +11,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.hit.EntityHitResult;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.Locale;
@@ -40,12 +41,14 @@ public final class TopuUtilityHud {
     }
     private static void render(MinecraftClient client, DrawContext draw) {
         if (client.player == null || client.world == null) return;
+        renderLegacyHud(client, draw);
         int width = client.getWindow().getScaledWidth(), x = Math.max(4, width - 218), y = 8, col = 0, row = 0;
         for (TopuUtilityManager.Utility u : TopuUtilityManager.ALL) { if (!on(u.id()) || isCore(u.id()) || u.id().equals("fpsgraph")) continue; String value = value(client, u.id()); if (value == null) continue; int px = x + col * 109, py = y + row * 18; draw.fill(px - 3, py - 2, px + 105, py + 14, 0xA0101520); draw.drawTextWithShadow(client.textRenderer, Text.literal(u.name() + ": " + value), px, py, 0xFFE7EDF7); if (++col == 2) { col = 0; row++; } if (row >= 25) break; }
         if (on("fpsgraph")) renderFpsGraph(client, draw, x, Math.min(client.getWindow().getScaledHeight() - 58, y + 25 * 18 + 4));
         if (on("crosshair")) renderCrosshair(client, draw);
         if (on("hitcolor")) renderHitReady(client, draw);
     }
+    private static void renderLegacyHud(MinecraftClient client, DrawContext draw) { try { Method m = HudManager.class.getDeclaredMethod("render", MinecraftClient.class, DrawContext.class, float.class); m.setAccessible(true); m.invoke(null, client, draw, 0.0F); } catch (Throwable ignored) {} }
     private static boolean isCore(String id) { return id.equals("fps") || id.equals("ping") || id.equals("tps") || id.equals("cps") || id.equals("combo") || id.equals("armor") || id.equals("effects") || id.equals("potions") || id.equals("gapples") || id.equals("totems") || id.equals("enemyhp") || id.equals("cooldown") || id.equals("warning") || id.equals("blockoverlay") || id.equals("keystrokes") || id.equals("memory") || id.equals("autosprint") || id.equals("togglesneak"); }
     private static String value(MinecraftClient client, String id) { PlayerEntity p = client.player; return switch (id) {
         case "coordinates" -> p.getBlockX() + ", " + p.getBlockY() + ", " + p.getBlockZ();
