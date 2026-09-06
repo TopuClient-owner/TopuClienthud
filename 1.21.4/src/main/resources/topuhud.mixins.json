@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "MouseMixin",
-    "ClientPlayerMixin"
+    "ClientPlayerMixin",
+    "TopuTitleMixin"
   ]
 }
