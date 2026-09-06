@@ -1,3 +1,35 @@
 package com.bettertoppi.topuhud;
-import com.bettertoppi.topuhud.config.ConfigManager;import com.bettertoppi.topuhud.config.TopuHudConfig;import net.fabricmc.api.ClientModInitializer;import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;import net.minecraft.client.MinecraftClient;import net.minecraft.client.gui.DrawContext;import net.minecraft.text.Text;
-public final class TopuHudClient implements ClientModInitializer{public void onInitializeClient(){ConfigManager.load();HudRenderCallback.EVENT.register(TopuHudClient::render);}private static void render(DrawContext g,float d){MinecraftClient mc=MinecraftClient.getInstance();if(mc.player==null||mc.world==null)return;TopuHudConfig c=ConfigManager.get();int x=Math.max(4,c.utilityX),y=Math.max(4,c.utilityY),r=0;if(c.fpsCounter)r=line(g,mc,x,y,r,"FPS: "+MinecraftClient.getCurrentFps());if(c.utilityCoordinates)r=line(g,mc,x,y,r,"XYZ: "+mc.player.getBlockPos().getX()+", "+mc.player.getBlockPos().getY()+", "+mc.player.getBlockPos().getZ());if(c.utilityDirection)r=line(g,mc,x,y,r,"Facing: "+mc.player.getHorizontalFacing().asString().toUpperCase());if(c.utilitySprintStatus)r=line(g,mc,x,y,r,mc.player.isSprinting()?"SPRINTING":"WALKING");if(c.memory)r=line(g,mc,x,y,r,"Memory: "+((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/1048576)+" MB");if(c.utilityCrosshair){int cx=mc.getWindow().getScaledWidth()/2,cy=mc.getWindow().getScaledHeight()/2;g.fill(cx-1,cy-5,cx+2,cy+6,0xFFFFFFFF);g.fill(cx-5,cy-1,cx+6,cy+2,0xFFFFFFFF);}}private static int line(DrawContext g,MinecraftClient mc,int x,int y,int r,String s){int py=y+r*18;g.fill(x-3,py-2,x+190,py+15,0xA0101520);g.drawTextWithShadow(mc.textRenderer,Text.of(s),x,py,0xFFE7EDF7);return r+1;}}
+
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.text.Text;
+
+public final class TopuHudClient implements ClientModInitializer {
+    @Override
+    public void onInitializeClient() {
+        HudRenderCallback.EVENT.register(TopuHudClient::render);
+    }
+
+    private static void render(DrawContext context, float tickDelta) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null) return;
+        int x = 6;
+        int y = 6;
+        int row = 0;
+        row = line(context, mc, x, y, row, "TOPU HUD");
+        row = line(context, mc, x, y, row, "FPS: " + mc.getCurrentFps());
+        row = line(context, mc, x, y, row, "XYZ: " + mc.player.getBlockPos().getX() + ", " + mc.player.getBlockPos().getY() + ", " + mc.player.getBlockPos().getZ());
+        row = line(context, mc, x, y, row, "Facing: " + mc.player.getHorizontalFacing().asString().toUpperCase());
+        row = line(context, mc, x, y, row, mc.player.isSprinting() ? "SPRINTING" : "WALKING");
+        line(context, mc, x, y, row, "Memory: " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1048576) + " MB");
+    }
+
+    private static int line(DrawContext context, MinecraftClient mc, int x, int y, int row, String text) {
+        int py = y + row * 18;
+        context.fill(x - 3, py - 2, x + 190, py + 15, 0xA0101520);
+        context.drawTextWithShadow(mc.textRenderer, Text.of(text), x, py, 0xFFE7EDF7);
+        return row + 1;
+    }
+}
