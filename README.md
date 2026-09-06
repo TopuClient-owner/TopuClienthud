@@ -1,10 +1,12 @@
 # TopuHUD — Topu Client Utility Menu
 
-Minecraft 1.21.x:
+## Minecraft 1.21.x
 - 1.21.1
 - 1.21.4
 - 1.21.8
 - 1.21.11
+
+The `main` branch contains the stable 1.21.x line. Minecraft 26.x builds are maintained separately in the `all-version-support` branch.
 
 Controls:
 Right Shift = utility menu
