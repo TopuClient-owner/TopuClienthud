@@ -1,14 +1,3 @@
 package com.bettertoppi.topuhud;
-
-import com.bettertoppi.topuhud.config.ConfigManager;
-import com.bettertoppi.topuhud.hud.HudManager;
-import com.bettertoppi.topuhud.hud.TopuUtilityHud;
-import net.fabricmc.api.ClientModInitializer;
-
-public final class TopuHudClient implements ClientModInitializer {
-    @Override public void onInitializeClient() {
-        ConfigManager.load();
-        HudManager.initialize();
-        TopuUtilityHud.initialize();
-    }
-}
+import com.bettertoppi.topuhud.config.ConfigManager;import com.bettertoppi.topuhud.config.TopuHudConfig;import net.fabricmc.api.ClientModInitializer;import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;import net.minecraft.client.MinecraftClient;import net.minecraft.client.gui.DrawableHelper;import net.minecraft.client.util.math.MatrixStack;import net.minecraft.text.Text;
+public final class TopuHudClient implements ClientModInitializer{public void onInitializeClient(){ConfigManager.load();HudRenderCallback.EVENT.register(TopuHudClient::render);}private static void render(MatrixStack m,float d){MinecraftClient mc=MinecraftClient.getInstance();if(mc.player==null||mc.world==null)return;TopuHudConfig c=ConfigManager.get();int x=Math.max(4,c.utilityX),y=Math.max(4,c.utilityY),r=0;if(c.fpsCounter)r=line(m,mc,x,y,r,"FPS: "+MinecraftClient.getCurrentFps());if(c.utilityCoordinates)r=line(m,mc,x,y,r,"XYZ: "+mc.player.getBlockPos().getX()+", "+mc.player.getBlockPos().getY()+", "+mc.player.getBlockPos().getZ());if(c.utilityDirection)r=line(m,mc,x,y,r,"Facing: "+mc.player.getHorizontalFacing().asString().toUpperCase());if(c.utilitySprintStatus)r=line(m,mc,x,y,r,mc.player.isSprinting()?"SPRINTING":"WALKING");if(c.memory)r=line(m,mc,x,y,r,"Memory: "+((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/1048576)+" MB");if(c.utilityCrosshair){int cx=mc.getWindow().getScaledWidth()/2,cy=mc.getWindow().getScaledHeight()/2;DrawableHelper.fill(m,cx-1,cy-5,cx+2,cy+6,0xFFFFFFFF);DrawableHelper.fill(m,cx-5,cy-1,cx+6,cy+2,0xFFFFFFFF);}}private static int line(MatrixStack m,MinecraftClient mc,int x,int y,int r,String s){int py=y+r*18;DrawableHelper.fill(m,x-3,py-2,x+190,py+15,0xA0101520);DrawableHelper.drawTextWithShadow(m,mc.textRenderer,Text.of(s),x,py,0xFFE7EDF7);return r+1;}}
