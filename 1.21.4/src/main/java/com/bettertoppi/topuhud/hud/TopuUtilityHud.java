@@ -31,6 +31,7 @@ public final class TopuUtilityHud {
         PlayerEntity p = client.player;
         if (!p.isOnGround() && wasOnGround) jumps++;
         wasOnGround = p.isOnGround();
+        if (on("autosprint") && client.currentScreen == null && client.options.forwardKey.isPressed() && !p.isSneaking() && p.getHungerManager().getFoodLevel() > 6) p.setSprinting(true);
         boolean zoom = on("zoom");
         if (zoom && !lastZoom) { savedFov = client.options.getFov().getValue(); client.options.getFov().setValue(Math.min(savedFov, 35)); } else if (!zoom && lastZoom) client.options.getFov().setValue(savedFov); lastZoom = zoom;
         boolean fullbright = on("fullbright");
