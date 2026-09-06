@@ -1,9 +1,9 @@
-name: Build TopuHUD
+name: Build TopuHUD 1.21.x
 
 on:
   push:
     branches:
-      - main
+      - 1.21.x-support
   workflow_dispatch:
 
 jobs:
@@ -15,63 +15,48 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          - version: "1.21"
+            java: "21"
           - version: "1.21.1"
             java: "21"
-            gradle: "9.2.0"
+          - version: "1.21.2"
+            java: "21"
+          - version: "1.21.3"
+            java: "21"
           - version: "1.21.4"
             java: "21"
-            gradle: "9.2.0"
+          - version: "1.21.5"
+            java: "21"
+          - version: "1.21.6"
+            java: "21"
+          - version: "1.21.7"
+            java: "21"
           - version: "1.21.8"
             java: "21"
-            gradle: "9.2.0"
+          - version: "1.21.9"
+            java: "21"
+          - version: "1.21.10"
+            java: "21"
           - version: "1.21.11"
             java: "21"
-            gradle: "9.2.0"
-          - version: "26.1.2"
-            java: "25"
-            gradle: "9.5.1"
-          - version: "26.2"
-            java: "25"
-            gradle: "9.5.1"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Java ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: gradle
-
-      - name: Set up Gradle ${{ matrix.gradle }}
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: ${{ matrix.gradle }}
-
-      - name: Show Java and Gradle versions
-        run: |
-          java -version
-          gradle --version
-
-      - name: Clean build with retry
+          gradle-version: "8.10.2"
+      - name: Build ${{ matrix.version }}
         working-directory: ${{ matrix.version }}
-        shell: bash
-        run: |
-          for attempt in 1 2 3 4; do
-            echo "Build attempt $attempt/4 for ${{ matrix.version }}"
-            if gradle clean build --no-daemon --stacktrace; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 4 ]; then
-              echo "Build failed; waiting 45 seconds before retry..."
-              sleep 45
-            fi
-          done
-          exit 1
-
-      - name: Upload build artifacts
+        run: gradle clean build --no-daemon --stacktrace
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: TopuHUD-${{ matrix.version }}
