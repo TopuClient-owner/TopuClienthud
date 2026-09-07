@@ -42,7 +42,7 @@ public final class HudManager {
         editKey = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.topuhud.edit", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_CONTROL, "category.topuhud"));
         sneakKey = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.topuhud.sneak", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_ALT, "category.topuhud"));
         ClientTickEvents.END_CLIENT_TICK.register(HudManager::tick);
-        HudRenderCallback.EVENT.register((draw, tickCounter) -> render(MinecraftClient.getInstance(), draw, tickCounter.getTickDelta()));
+        HudRenderCallback.EVENT.register((draw, tickCounter) -> render(MinecraftClient.getInstance(), draw, tickCounter.getTickDelta(false)));
     }
 
     public static void setMenuOpen(boolean value) {}
@@ -79,44 +79,28 @@ public final class HudManager {
 
     public static int[] getPositionForEditor(TopuHudConfig c, HudId id) {
         switch (id) {
-            case ARMOR: return new int[]{c.armorX,c.armorY};
-            case FPS: return new int[]{c.fpsX,c.fpsY};
-            case PING: return new int[]{c.pingX,c.pingY};
-            case TPS: return new int[]{c.tpsX,c.tpsY};
-            case CPS: return new int[]{c.cpsX,c.cpsY};
-            case COMBO: return new int[]{c.comboX,c.comboY};
-            case TOTEM: return new int[]{c.totemX,c.totemY};
-            case POTION: return new int[]{c.potionX,c.potionY};
-            case EFFECTS: return new int[]{c.effectsX,c.effectsY};
-            case GAPPLE: return new int[]{c.gappleX,c.gappleY};
-            case WARNING: return new int[]{c.warningX,c.warningY};
-            case ENEMY: return new int[]{c.enemyHealthX,c.enemyHealthY};
-            case COOLDOWN: return new int[]{c.cooldownX,c.cooldownY};
-            case BLOCK_OVERLAY: return new int[]{c.blockOverlayX,c.blockOverlayY};
-            case KEYSTROKES: return new int[]{c.keystrokesX,c.keystrokesY};
-            case MEMORY: return new int[]{c.memoryX,c.memoryY};
+            case ARMOR: return new int[]{c.armorX,c.armorY}; case FPS: return new int[]{c.fpsX,c.fpsY};
+            case PING: return new int[]{c.pingX,c.pingY}; case TPS: return new int[]{c.tpsX,c.tpsY};
+            case CPS: return new int[]{c.cpsX,c.cpsY}; case COMBO: return new int[]{c.comboX,c.comboY};
+            case TOTEM: return new int[]{c.totemX,c.totemY}; case POTION: return new int[]{c.potionX,c.potionY};
+            case EFFECTS: return new int[]{c.effectsX,c.effectsY}; case GAPPLE: return new int[]{c.gappleX,c.gappleY};
+            case WARNING: return new int[]{c.warningX,c.warningY}; case ENEMY: return new int[]{c.enemyHealthX,c.enemyHealthY};
+            case COOLDOWN: return new int[]{c.cooldownX,c.cooldownY}; case BLOCK_OVERLAY: return new int[]{c.blockOverlayX,c.blockOverlayY};
+            case KEYSTROKES: return new int[]{c.keystrokesX,c.keystrokesY}; case MEMORY: return new int[]{c.memoryX,c.memoryY};
             default: return new int[]{10,10};
         }
     }
 
     public static void setPositionForEditor(TopuHudConfig c, HudId id, int x, int y) {
         switch (id) {
-            case ARMOR: c.armorX=x;c.armorY=y;break;
-            case FPS: c.fpsX=x;c.fpsY=y;break;
-            case PING: c.pingX=x;c.pingY=y;break;
-            case TPS: c.tpsX=x;c.tpsY=y;break;
-            case CPS: c.cpsX=x;c.cpsY=y;break;
-            case COMBO: c.comboX=x;c.comboY=y;break;
-            case TOTEM: c.totemX=x;c.totemY=y;break;
-            case POTION: c.potionX=x;c.potionY=y;break;
-            case EFFECTS: c.effectsX=x;c.effectsY=y;break;
-            case GAPPLE: c.gappleX=x;c.gappleY=y;break;
-            case WARNING: c.warningX=x;c.warningY=y;break;
-            case ENEMY: c.enemyHealthX=x;c.enemyHealthY=y;break;
-            case COOLDOWN: c.cooldownX=x;c.cooldownY=y;break;
-            case BLOCK_OVERLAY: c.blockOverlayX=x;c.blockOverlayY=y;break;
-            case KEYSTROKES: c.keystrokesX=x;c.keystrokesY=y;break;
-            case MEMORY: c.memoryX=x;c.memoryY=y;break;
+            case ARMOR: c.armorX=x;c.armorY=y;break; case FPS: c.fpsX=x;c.fpsY=y;break;
+            case PING: c.pingX=x;c.pingY=y;break; case TPS: c.tpsX=x;c.tpsY=y;break;
+            case CPS: c.cpsX=x;c.cpsY=y;break; case COMBO: c.comboX=x;c.comboY=y;break;
+            case TOTEM: c.totemX=x;c.totemY=y;break; case POTION: c.potionX=x;c.potionY=y;break;
+            case EFFECTS: c.effectsX=x;c.effectsY=y;break; case GAPPLE: c.gappleX=x;c.gappleY=y;break;
+            case WARNING: c.warningX=x;c.warningY=y;break; case ENEMY: c.enemyHealthX=x;c.enemyHealthY=y;break;
+            case COOLDOWN: c.cooldownX=x;c.cooldownY=y;break; case BLOCK_OVERLAY: c.blockOverlayX=x;c.blockOverlayY=y;break;
+            case KEYSTROKES: c.keystrokesX=x;c.keystrokesY=y;break; case MEMORY: c.memoryX=x;c.memoryY=y;break;
         }
     }
 
