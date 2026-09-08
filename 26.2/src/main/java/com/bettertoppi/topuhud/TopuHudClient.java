@@ -1,7 +1,7 @@
 package com.bettertoppi.topuhud;
 
 import com.bettertoppi.topuhud.config.ConfigManager;
-import com.bettertoppi.topuhud.hud.TopuUtilityHud;
+import com.bettertoppi.topuhud.hud.TopuUtilityHudRenderer;
 import com.bettertoppi.topuhud.modmenu.TopuHudScreen;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
@@ -16,7 +16,7 @@ public final class TopuHudClient implements ClientModInitializer {
     private static final KeyMapping MENU=KeyMappingHelper.registerKeyMapping(new KeyMapping("key.topuhud.menu",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,CATEGORY));
     @Override public void onInitializeClient(){
         ConfigManager.load();
-        TopuUtilityHud.initialize();
+        TopuUtilityHudRenderer.initialize();
         ClientTickEvents.END_CLIENT_TICK.register(client->{while(MENU.consumeClick())client.setScreenAndShow(new TopuHudScreen(client.gui.screen()));});
     }
 }
