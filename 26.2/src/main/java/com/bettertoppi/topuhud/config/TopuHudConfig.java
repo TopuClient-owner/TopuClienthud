@@ -5,6 +5,13 @@ public final class TopuHudConfig {
     public boolean cpsDisplay=true, comboCounter=true, totemCounter=true, potionEffects=true, potionCounter=true, gappleCounter=true;
     public boolean armorWarning=true, enemyHealth=true, cooldown=true, blockOverlay=true, keystrokes=true, memory=true;
     public boolean autoSprint=true, toggleSneak=true, editMode=false;
+
+    public int armorX=10, armorY=10, fpsX=10, fpsY=70, pingX=10, pingY=86, tpsX=10, tpsY=102;
+    public int cpsX=10, cpsY=118, comboX=10, comboY=134, totemX=10, totemY=150, potionX=10, potionY=166;
+    public int effectsX=10, effectsY=182, gappleX=10, gappleY=214, warningX=10, warningY=232;
+    public int enemyHealthX=10, enemyHealthY=250, cooldownX=10, cooldownY=270;
+    public int blockOverlayX=10, blockOverlayY=300, keystrokesX=10, keystrokesY=340, memoryX=10, memoryY=410;
+
     public boolean utilityCoordinates=true, utilityDirection=true, utilitySpeed=true;
     public boolean utilityJumpCounter=false, utilityFallDistance=false, utilitySprintStatus=false, utilityVelocity=false;
     public boolean utilityCrosshair=false, utilityHitColor=false, utilityHitSound=false, utilityReach=false, utilityAttackIndicator=true;
